@@ -1,3 +1,5 @@
-import { mainGame } from "./main";
+import { MainGame } from "./main";
+import { SceneLoader } from "./sceneLoader";
 
-new mainGame();
+// new MainGame();
+new SceneLoader();

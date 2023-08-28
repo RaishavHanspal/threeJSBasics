@@ -1,14 +1,15 @@
-import * as THREE from "three";
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
-export class mainGame {
-    private scene: THREE.Scene;
-    private camera: THREE.PerspectiveCamera;
-    private renderer: THREE.WebGLRenderer;
-    private cubeInstance: THREE.Mesh;
-    private lineInstance: THREE.Line;
-    private mixers: THREE.AnimationMixer[] = [];
+import { Scene } from "three/src/scenes/Scene";
+import { AmbientLight, AnimationMixer, BoxGeometry, BufferGeometry, Color, DirectionalLight, Line, LineBasicMaterial, Mesh, MeshBasicMaterial, MeshPhongMaterial, Object3D, PerspectiveCamera, Vector3, WebGLRenderer } from "three/src/Three";
+export class MainGame {
+    private scene: Scene;
+    private camera: PerspectiveCamera;
+    private renderer: WebGLRenderer;
+    private cubeInstance: Mesh;
+    private lineInstance: Line;
+    private mixers: AnimationMixer[] = [];
     private previousTimeStamp: number;
     constructor() {
         console.log("Start setting up a scene");
@@ -18,15 +19,15 @@ export class mainGame {
     }
 
     private initialize() {
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(0x262626);
-        this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer();
+        this.scene = new Scene();
+        this.scene.background = new Color(0x262626);
+        this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this.renderer = new WebGLRenderer();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        const light = new THREE.DirectionalLight(0xffffff, 0.5);
+        const light = new DirectionalLight(0xffffff, 0.5);
         light.position.z = 200;
         light.castShadow = true;
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1)
+        const ambientLight = new AmbientLight(0xffffff, 1)
         this.scene.add(ambientLight)
         this.scene.add(light);
         document.body.appendChild(this.renderer.domElement);
@@ -34,19 +35,19 @@ export class mainGame {
 
     private addElements() {
         /** add a green cube */
-        const boxGeometry = new THREE.BoxGeometry(100, 100, 100);
-        const meshMaterial = new THREE.MeshBasicMaterial({ color: 0x00eeaa });
-        this.cubeInstance = new THREE.Mesh(boxGeometry, meshMaterial);
+        const boxGeometry = new BoxGeometry(100, 100, 100);
+        const meshMaterial = new MeshBasicMaterial({ color: 0x00eeaa });
+        this.cubeInstance = new Mesh(boxGeometry, meshMaterial);
         this.scene.add(this.cubeInstance);
         this.cubeInstance.position.y -= 100;
         this.camera.position.z = 500;
         /** add a blue line */
-        const lineMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff });
+        const lineMaterial = new LineBasicMaterial({ color: 0x0000ff });
         const points = [];
-        points.push(new THREE.Vector3(-250, 25, 0));
-        points.push(new THREE.Vector3(250, 25, 0));
-        const bufferGeometry = new THREE.BufferGeometry().setFromPoints(points);
-        this.lineInstance = new THREE.Line(bufferGeometry, lineMaterial);
+        points.push(new Vector3(-250, 25, 0));
+        points.push(new Vector3(250, 25, 0));
+        const bufferGeometry = new BufferGeometry().setFromPoints(points);
+        this.lineInstance = new Line(bufferGeometry, lineMaterial);
         this.scene.add(this.lineInstance);
         /** add a text in the scene */
         const fontLoader = new FontLoader();
@@ -63,21 +64,21 @@ export class mainGame {
                 bevelSegments: 5
             });
             const textMeshMaterial = [
-                new THREE.MeshPhongMaterial({
+                new MeshPhongMaterial({
                     color: 0xffff00,
                     flatShading: true
                 }), // front
-                new THREE.MeshPhongMaterial({
+                new MeshPhongMaterial({
                     color: 0xdd0000
                 }) // side
             ];
-            const textMesh = new THREE.Mesh(fontGeometry, textMeshMaterial);
+            const textMesh = new Mesh(fontGeometry, textMeshMaterial);
             fontGeometry.computeBoundingBox()
             fontGeometry.computeVertexNormals()
             fontGeometry.boundingBox.getCenter(textMesh.position).multiplyScalar(-1)
             textMesh.position.y += 200;
             textMesh.position.x = -fontGeometry.boundingBox.max.x / 2
-            const parent = new THREE.Object3D()
+            const parent = new Object3D()
             parent.add(textMesh)
             this.scene.add(parent)
         });
@@ -86,7 +87,7 @@ export class mainGame {
         fbxLoader.load('assets/Rumba Dancing.fbx', (obj) => {
             this.scene.add(obj);
             obj.position.z = 100;
-            const mixer = new THREE.AnimationMixer(obj);
+            const mixer = new AnimationMixer(obj);
             const anim = mixer.clipAction(obj.animations[0]);
             this.mixers.push(mixer);
             anim.play();
@@ -101,7 +102,7 @@ export class mainGame {
         this.cubeInstance.rotation.y += 0.01;
         /** update instance of all fbx animations */
         this.mixers.forEach((m, i) => {
-           m.update(delta / 1000);
+            m.update(delta / 1000);
         });
         this.renderer.render(this.scene, this.camera);
     }
