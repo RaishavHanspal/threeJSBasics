@@ -3,6 +3,7 @@ import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { LoadFileType } from "../interface";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { ObjectLoader } from "three/src/loaders/ObjectLoader";
 
 export class Utils {
     /** map to hold all loaders */
@@ -16,6 +17,7 @@ export class Utils {
         this.loaders.set("fbx", new FBXLoader());
         this.loaders.set("font", new FontLoader());
         this.loaders.set("gltf", new GLTFLoader());
+        this.loaders.set("scene", new ObjectLoader());
     }
 
     public playFBX(fbx: any, animation: AnimationClip) {

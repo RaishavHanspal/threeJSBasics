@@ -24,6 +24,28 @@ export class SceneLoader {
     }
 
     private addElements() {
+        this.loadJsonScene();
+    }
+
+    /** better approach then GLTF - 
+     * 1- no problem with similar names used for bones, animations 
+     * 2- animations are linked directly to fbx reference
+     **/
+    private loadJsonScene(): void {
+        // load scene.json - no problem with similar named bones
+        utilsObj.loadFile(this.scene, "scene.json", "scene", (obj) => {
+            console.log(obj);
+            obj.children.forEach((displayObject: any, i: number) => {
+                if (displayObject.animations.length) {
+                    const mixer = utilsObj.playFBX(displayObject, displayObject.animations[0]);
+                    (mixer as any).userData = displayObject.userData;
+                    mixer && this.mixers.push(mixer);
+                }
+            })
+        });
+    }
+
+    private loadGltfScene(): void {
         // Load the GLTF file
         utilsObj.loadFile(this.scene, "scene.gltf", "gltf", (gltf) => {
             const animations: AnimationClip[] = gltf.animations;
