@@ -1,4 +1,3 @@
-import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { Scene } from "three/src/scenes/Scene";
@@ -83,15 +82,14 @@ export class MainGame {
             this.scene.add(parent)
         });
         /** add fbx model - and play anim */
-        const fbxLoader = new FBXLoader();
-        fbxLoader.load('assets/Rumba Dancing.fbx', (obj) => {
-            this.scene.add(obj);
-            obj.position.z = 100;
-            const mixer = new AnimationMixer(obj);
-            const anim = mixer.clipAction(obj.animations[0]);
-            this.mixers.push(mixer);
-            anim.play();
-        })
+        utilsObj.loadFile(this.scene, "Rumba Dancing.fbx", "fbx", (obj: any) => {
+          const mixer = utilsObj.playFBX(obj, obj.animations[0]);
+          mixer && this.mixers.push(mixer);
+        },  { position: { z: 100 }});
+        utilsObj.loadFile(this.scene, "Samba Dancing.fbx", "fbx", (obj: any) => {
+            const mixer = utilsObj.playFBX(obj, obj.animations[0]);
+            mixer && this.mixers.push(mixer);
+          },  { position: { z: 100 }});
     }
 
     private animate(currentTimeStamp: number) {

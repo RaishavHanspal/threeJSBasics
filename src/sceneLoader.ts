@@ -1,15 +1,16 @@
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { Scene } from "three/src/scenes/Scene";
-import { Camera, Color, PerspectiveCamera, WebGLRenderer } from "three/src/Three";
+import { AnimationClip, AnimationMixer, Camera, Color, PerspectiveCamera, WebGLRenderer } from "three/src/Three";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
+    private mixers: AnimationMixer[] = [];
+    private previousTimeStamp: number;
     constructor() {
         console.log("Start setting up a scene");
         this.initialize();
         this.addElements();
-        this.animate();
+        this.animate(Date.now());
     }
 
     private initialize() {
@@ -23,21 +24,32 @@ export class SceneLoader {
     }
 
     private addElements() {
-        // Create a loader
-        const loader = new GLTFLoader();
         // Load the GLTF file
-        loader.load("assets/scene.gltf", (gltf) => {
-            this.scene.add(gltf.scene);
+        utilsObj.loadFile(this.scene, "scene.gltf", "gltf", (gltf) => {
+            const animations: AnimationClip[] = gltf.animations;
+            let animationIndex: number = 0;
             // traverse all the elements
-            gltf.scene.traverse((object: any) => {
-
-            });
+            gltf.scene.children.forEach((displayObject: any, i: number) => {
+                /** custom info can be added through threeJs Editor */
+                if (displayObject?.userData?.type === "fbxAnim") {
+                    console.log("start " + displayObject?.userData?.name);
+                    const mixer = utilsObj.playFBX(displayObject, animations[animationIndex]);
+                    (mixer as any).userData = displayObject.userData;
+                    mixer && this.mixers.push(mixer);
+                    animationIndex++;
+                }
+            })
         });
-
     }
 
-    private animate() {
+    private animate(currentTimeStamp: number) {
+        const delta = currentTimeStamp - this.previousTimeStamp;
+        this.previousTimeStamp = currentTimeStamp;
         requestAnimationFrame(this.animate.bind(this));
+        /** update instance of all fbx animations */
+        this.mixers.forEach((m, i) => {
+            m.update(delta / 1000);
+        });
         this.renderer.render(this.scene, this.camera);
     }
 }
