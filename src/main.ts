@@ -83,11 +83,11 @@ export class MainGame {
         });
         /** add fbx model - and play anim */
         utilsObj.loadFile(this.scene, "Rumba Dancing.fbx", "fbx", (obj: any) => {
-          const mixer = utilsObj.playFBX(obj, obj.animations[0]);
+          const { mixer } = utilsObj.registerFBX(obj, obj.animations[0], true);
           mixer && this.mixers.push(mixer);
         },  { position: { z: 100 }});
         utilsObj.loadFile(this.scene, "Samba Dancing.fbx", "fbx", (obj: any) => {
-            const mixer = utilsObj.playFBX(obj, obj.animations[0]);
+            const { mixer } = utilsObj.registerFBX(obj, obj.animations[0], true);
             mixer && this.mixers.push(mixer);
           },  { position: { z: 100 }});
     }

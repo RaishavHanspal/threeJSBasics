@@ -1,4 +1,4 @@
-import { AnimationClip, AnimationMixer, Scene } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, Scene } from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { LoadFileType } from "../interface";
@@ -20,11 +20,14 @@ export class Utils {
         this.loaders.set("scene", new ObjectLoader());
     }
 
-    public playFBX(fbx: any, animation: AnimationClip) {
-        const mixer = new AnimationMixer(fbx);
-        const anim = mixer.clipAction(animation);
-        anim.play();
-        return mixer;
+    /** maintain single mixer for one model */
+    public registerFBX(fbx: any, animation: AnimationClip, playAnim: boolean, oldMixer?: AnimationMixer): { mixer: AnimationMixer, action: AnimationAction} {
+        const mixer = oldMixer || new AnimationMixer(fbx);
+        const action = mixer.clipAction(animation);
+        /** in order to store ref of all possible animations */
+        fbx.actions = fbx.actions ?  [...fbx.actions, action] : [ action ];
+        playAnim && action.play();
+        return { mixer, action };
     }
 
     public applyOpts(target: any, opts: any): void {
