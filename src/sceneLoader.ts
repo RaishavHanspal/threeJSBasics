@@ -1,17 +1,17 @@
 import { Scene } from "three/src/scenes/Scene";
-import { AnimationAction, AnimationClip, AnimationMixer, Color, PerspectiveCamera, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, Clock, Color, PerspectiveCamera, WebGLRenderer } from "three/src/Three";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
     private mixers: AnimationMixer[] = [];
-    private previousTimeStamp: number;
     private character: any;
     private activeCharacterAction: AnimationAction;
     private lastCharacterAction: AnimationAction;
     private moving: "forward" | "backward" | "standing" = "standing";
     private map: any;
-    private readonly moveFactor: number = 0.02;;
+    private clock: Clock;
+    private readonly moveFactor: number = 0.025;
     constructor() {
         console.log("Start setting up a scene");
         this.initialize();
@@ -22,6 +22,7 @@ export class SceneLoader {
     private initialize() {
         this.scene = new Scene();
         this.scene.background = new Color(0x262626);
+        this.clock = new Clock();
         // this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         // this.camera.position.z = 20;
         this.renderer = new WebGLRenderer();
@@ -60,11 +61,10 @@ export class SceneLoader {
                     this.activeCharacterAction = currentAction;
                 }
                 /** identify and assign Map refernce */
-                else if(displayObject.name === "Map"){
+                else if (displayObject.name === "Map") {
                     this.map = displayObject;
                 }
             });
-            this.previousTimeStamp = Date.now();
             this.startRender();
         });
     }
@@ -87,7 +87,7 @@ export class SceneLoader {
     }
 
     private startRender() {
-        this.animate(Date.now());
+        this.animate();
         this.resize();
         window.addEventListener('resize', this.resize.bind(this), false);
     }
@@ -96,7 +96,7 @@ export class SceneLoader {
         /** load other animation actions for the character */
         utilsObj.loadFile(this.scene, "walking.fbx", "fbx", (fbx) => {
             const animation = fbx.animations[0];
-            const { mixer: newMixer} = utilsObj.registerFBX(this.character, animation, false, mixer);
+            const { mixer: newMixer } = utilsObj.registerFBX(this.character, animation, false, mixer);
             /** in case no active mixer available for the model - add new one */
             if (!mixer) {
                 newMixer && this.mixers.push(newMixer);
@@ -106,13 +106,13 @@ export class SceneLoader {
         document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
     }
 
-    private bindKeyInputHandlers(evt: any): void{
+    private bindKeyInputHandlers(evt: any): void {
         var keyCode = evt.which;
         if (keyCode == 87) {
             this.setCharacterAction(this.character.actions[1]);
             this.moving = "forward";
         }
-        else{
+        else {
             this.setCharacterAction(this.character.actions[0]);
             this.moving = "standing";
         }
@@ -129,9 +129,9 @@ export class SceneLoader {
         }
     }
 
-    private checkForCharacterMovement(): void{
-        if(this.moving === "standing" || !this.map) return;
-        switch(this.moving){
+    private checkForCharacterMovement(): void {
+        if (this.moving === "standing" || !this.map) return;
+        switch (this.moving) {
             case "forward": this.map.position.z -= this.moveFactor;
         }
     }
@@ -142,13 +142,11 @@ export class SceneLoader {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    private animate(currentTimeStamp: number) {
-        const delta = currentTimeStamp - this.previousTimeStamp;
-        this.previousTimeStamp = currentTimeStamp;
+    private animate() {
         requestAnimationFrame(this.animate.bind(this));
         /** update instance of all fbx animations */
         this.mixers.forEach((m, i) => {
-            m.update(delta / 1000);
+            m.update(this.clock.getDelta());
         });
         this.checkForCharacterMovement();
         this.renderer.render(this.scene, this.camera);
