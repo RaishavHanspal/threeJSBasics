@@ -1,5 +1,5 @@
 import { Scene } from "three/src/scenes/Scene";
-import { AnimationAction, AnimationClip, AnimationMixer, Clock, Color, LoopOnce, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, Box3, Clock, Color, LoopOnce, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -13,7 +13,10 @@ export class SceneLoader {
     private clock: Clock;
     private toIdleTimeOut: NodeJS.Timeout;
     private targetQuaternion: Quaternion;
-    private readonly moveFactor: number = 0.025;
+    private runToggle: boolean = false;
+    /** true when all animation have been loaded */
+    private characterReady: Boolean = false;
+    private readonly moveFactor: number = 0.05;
     constructor() {
         console.log("Start setting up a scene");
         this.initialize();
@@ -45,7 +48,7 @@ export class SceneLoader {
         // load scene.json - no problem with similar named bones
         utilsObj.loadFile(this.scene, "sceneCS.json", "scene", (obj) => {
             console.log(obj);
-            obj.children.forEach((displayObject: any, i: number) => {
+            obj.traverse((displayObject: any, i: number) => {
                 let currentAction: AnimationAction;
                 let currentMixer: AnimationMixer;
                 if (displayObject.animations.length) {
@@ -97,14 +100,11 @@ export class SceneLoader {
 
     private addCharacterControls(mixer?: AnimationMixer): void {
         /** load other animation actions for the character */
-        utilsObj.loadFile(this.scene, "walking.fbx", "fbx", (fbx) => {
-            const animation = fbx.animations[0];
-            const { mixer: newMixer } = utilsObj.registerFBX(this.character, animation, false, mixer);
-            /** in case no active mixer available for the model - add new one */
-            if (!mixer) {
-                newMixer && this.mixers.push(newMixer);
-            }
-        });
+        utilsObj.loadAndBindFBXAnimation(this.character, this.scene, "walking.fbx", mixer, () => {
+            utilsObj.loadAndBindFBXAnimation(this.character, this.scene, "run.fbx", mixer, () => {
+                this.characterReady = true;
+            });
+        })
         /** add handlers to key events to change animations */
         document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
         document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
@@ -117,9 +117,13 @@ export class SceneLoader {
         this.keyPressedMap[keyCode] = (evt.type === "keydown");
         if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(keyCode) && this.keyPressedMap[keyCode]) {
             /** walk animation - in action[1] */
-            this.setCharacterAction((this.character as any).actions[1]);
+            this.setCharacterAction((this.character as any).actions[this.runToggle ? 2: 1]);
         }
-        else if(this.isCharacterMoving()){
+        else if(["KeyQ"].includes(keyCode) && this.keyPressedMap[keyCode]){
+            /** running animation - in action2] */
+            this.runToggle = !this.runToggle;
+        }
+        else if (!this.isCharacterMoving()) {
             this.toIdleTimeOut = setTimeout(() => {
                 /** idle animation - in action[0] */
                 this.setCharacterAction((this.character as any).actions[0]);
@@ -127,7 +131,7 @@ export class SceneLoader {
         }
     }
 
-    private isCharacterMoving(): boolean{
+    private isCharacterMoving(): boolean {
         return !!["KeyW", "KeyA", "KeyS", "KeyD"].find((key: string) => this.keyPressedMap[key]);
     }
 
@@ -143,22 +147,22 @@ export class SceneLoader {
     }
 
     private checkForCharacterMovement(delta: number): void {
-        let moving = false;
-        let { x, y, z } = this.character.position
+        let { x, y, z } = this.character.position;
+        const moveFactor = this.moveFactor * (this.runToggle ? 5 : 1);
         if (this.keyPressedMap["KeyW"]) {
-            this.map.translateZ(-this.moveFactor);
+            this.map.translateZ(-moveFactor);
             z++;
         }
         if (this.keyPressedMap["KeyS"]) {
-            this.map.translateZ(this.moveFactor);
+            this.map.translateZ(moveFactor);
             z--;
         }
         if (this.keyPressedMap["KeyA"]) {
-            this.map.translateX(-this.moveFactor);
+            this.map.translateX(-moveFactor);
             x++;
         }
         if (this.keyPressedMap["KeyD"]) {
-            this.map.translateX(this.moveFactor);
+            this.map.translateX(moveFactor);
             x--;
         }
         const rotationMatrix = new Matrix4()
@@ -167,7 +171,7 @@ export class SceneLoader {
         this.targetQuaternion.setFromRotationMatrix(rotationMatrix)
 
         if (!this.character.quaternion.equals(this.targetQuaternion)) {
-            this.character.quaternion.rotateTowards(this.targetQuaternion, this.moveFactor)
+            this.character.quaternion.rotateTowards(this.targetQuaternion, moveFactor)
         }
     }
 
@@ -183,7 +187,7 @@ export class SceneLoader {
         this.mixers.forEach((m, i) => {
             m.update(this.clock.getDelta());
         });
-        this.checkForCharacterMovement(this.clock.getDelta());
+        this.characterReady && this.checkForCharacterMovement(this.clock.getDelta());
         this.renderer.render(this.scene, this.camera);
     }
 }

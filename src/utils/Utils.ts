@@ -12,7 +12,7 @@ export class Utils {
         this.initializeLoaders();
     }
 
-    private initializeLoaders(): void{
+    private initializeLoaders(): void {
         this.loaders = new Map();
         this.loaders.set("fbx", new FBXLoader());
         this.loaders.set("font", new FontLoader());
@@ -21,13 +21,21 @@ export class Utils {
     }
 
     /** maintain single mixer for one model */
-    public registerFBX(fbx: any, animation: AnimationClip, playAnim: boolean, oldMixer?: AnimationMixer): { mixer: AnimationMixer, action: AnimationAction} {
+    public registerFBX(fbx: any, animation: AnimationClip, playAnim: boolean, oldMixer?: AnimationMixer): { mixer: AnimationMixer, action: AnimationAction } {
         const mixer = oldMixer || new AnimationMixer(fbx);
         const action = mixer.clipAction(animation);
         /** in order to store ref of all possible animations */
-        fbx.actions = fbx.actions ?  [...fbx.actions, action] : [ action ];
+        fbx.actions = fbx.actions ? [...fbx.actions, action] : [action];
         playAnim && action.play();
         return { mixer, action };
+    }
+
+    public loadAndBindFBXAnimation(fbx: any, scene: Scene, fileName: string, mixer: AnimationMixer, callback?: () => void) {
+        this.loadFile(scene, fileName, "fbx", (fbxAnim) => {
+            const animation = fbxAnim.animations[0];
+            this.registerFBX(fbx, animation, false, mixer);
+            callback && callback();
+        });
     }
 
     public applyOpts(target: any, opts: any): void {
@@ -36,14 +44,14 @@ export class Utils {
             if (target[opt] && typeof opts[opt] !== "object") {
                 target[opt] = opts[opt];
             }
-            else if(target[opt]) {
+            else if (target[opt]) {
                 /** recursively update  */
                 this.applyOpts(target[opt], opts[opt]);
             }
         }
     }
 
-    public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, relPath: string = "assets/"): void{
+    public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, relPath: string = "assets/"): void {
         const loader: any = this.loaders.get(fileType);
         loader.load(relPath + fileName, (obj: any) => {
             scene.add(fileType === "gltf" ? obj.scene : obj);
