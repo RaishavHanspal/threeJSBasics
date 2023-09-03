@@ -1,4 +1,5 @@
 import { Scene } from "three/src/scenes/Scene";
+import { VRButton } from "three/examples/jsm/webxr/VRButton"
 import { AnimationAction, AnimationClip, AnimationMixer, Box3, Clock, Color, LoopOnce, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
 export class SceneLoader {
     private scene: Scene;
@@ -93,9 +94,16 @@ export class SceneLoader {
     }
 
     private startRender() {
-        this.animate();
+        // this.animate();
+        this.setupVR();
+        this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
         window.addEventListener('resize', this.resize.bind(this), false);
+    }
+
+    private setupVR(): void {
+        this.renderer.xr.enabled = true;
+        document.body.appendChild(VRButton.createButton(this.renderer));
     }
 
     private addCharacterControls(mixer?: AnimationMixer): void {
@@ -117,9 +125,9 @@ export class SceneLoader {
         this.keyPressedMap[keyCode] = (evt.type === "keydown");
         if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(keyCode) && this.keyPressedMap[keyCode]) {
             /** walk animation - in action[1] */
-            this.setCharacterAction((this.character as any).actions[this.runToggle ? 2: 1]);
+            this.setCharacterAction((this.character as any).actions[this.runToggle ? 2 : 1]);
         }
-        else if(["KeyQ"].includes(keyCode) && this.keyPressedMap[keyCode]){
+        else if (["KeyQ"].includes(keyCode) && this.keyPressedMap[keyCode]) {
             /** running animation - in action2] */
             this.runToggle = !this.runToggle;
         }
@@ -182,7 +190,7 @@ export class SceneLoader {
     }
 
     private animate() {
-        requestAnimationFrame(this.animate.bind(this));
+        // requestAnimationFrame(this.animate.bind(this));
         /** update instance of all fbx animations */
         this.mixers.forEach((m, i) => {
             m.update(this.clock.getDelta());
