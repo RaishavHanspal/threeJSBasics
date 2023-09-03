@@ -1,16 +1,18 @@
 import { Scene } from "three/src/scenes/Scene";
-import { AnimationAction, AnimationClip, AnimationMixer, Clock, Color, PerspectiveCamera, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, Clock, Color, LoopOnce, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
     private renderer: WebGLRenderer;
     private mixers: AnimationMixer[] = [];
-    private character: any;
+    private character: Object3D;
     private activeCharacterAction: AnimationAction;
     private lastCharacterAction: AnimationAction;
-    private moving: "forward" | "backward" | "standing" = "standing";
-    private map: any;
+    private keyPressedMap: { [key: string]: boolean } = {};
+    private map: Object3D;
     private clock: Clock;
+    private toIdleTimeOut: NodeJS.Timeout;
+    private targetQuaternion: Quaternion;
     private readonly moveFactor: number = 0.025;
     constructor() {
         console.log("Start setting up a scene");
@@ -23,6 +25,7 @@ export class SceneLoader {
         this.scene = new Scene();
         this.scene.background = new Color(0x262626);
         this.clock = new Clock();
+        this.targetQuaternion = new Quaternion();
         // this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         // this.camera.position.z = 20;
         this.renderer = new WebGLRenderer();
@@ -104,21 +107,31 @@ export class SceneLoader {
         });
         /** add handlers to key events to change animations */
         document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
+        document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
     }
 
     private bindKeyInputHandlers(evt: any): void {
-        var keyCode = evt.which;
-        if (keyCode == 87) {
-            this.setCharacterAction(this.character.actions[1]);
-            this.moving = "forward";
+        let keyCode = evt.code;
+        this.toIdleTimeOut && clearTimeout(this.toIdleTimeOut);
+        this.toIdleTimeOut = null;
+        this.keyPressedMap[keyCode] = (evt.type === "keydown");
+        if (["KeyW", "KeyA", "KeyS", "KeyD"].includes(keyCode) && this.keyPressedMap[keyCode]) {
+            /** walk animation - in action[1] */
+            this.setCharacterAction((this.character as any).actions[1]);
         }
-        else {
-            this.setCharacterAction(this.character.actions[0]);
-            this.moving = "standing";
+        else if(this.isCharacterMoving()){
+            this.toIdleTimeOut = setTimeout(() => {
+                /** idle animation - in action[0] */
+                this.setCharacterAction((this.character as any).actions[0]);
+            }, 200);
         }
     }
 
-    public setCharacterAction(toAction: any): void {
+    private isCharacterMoving(): boolean{
+        return !!["KeyW", "KeyA", "KeyS", "KeyD"].find((key: string) => this.keyPressedMap[key]);
+    }
+
+    public setCharacterAction(toAction: AnimationAction): void {
         if (toAction != this.activeCharacterAction) {
             this.lastCharacterAction = this.activeCharacterAction
             this.activeCharacterAction = toAction
@@ -129,10 +142,32 @@ export class SceneLoader {
         }
     }
 
-    private checkForCharacterMovement(): void {
-        if (this.moving === "standing" || !this.map) return;
-        switch (this.moving) {
-            case "forward": this.map.position.z -= this.moveFactor;
+    private checkForCharacterMovement(delta: number): void {
+        let moving = false;
+        let { x, y, z } = this.character.position
+        if (this.keyPressedMap["KeyW"]) {
+            this.map.translateZ(-this.moveFactor);
+            z++;
+        }
+        if (this.keyPressedMap["KeyS"]) {
+            this.map.translateZ(this.moveFactor);
+            z--;
+        }
+        if (this.keyPressedMap["KeyA"]) {
+            this.map.translateX(-this.moveFactor);
+            x++;
+        }
+        if (this.keyPressedMap["KeyD"]) {
+            this.map.translateX(this.moveFactor);
+            x--;
+        }
+        const rotationMatrix = new Matrix4()
+        const target = new Vector3(x, y, z);
+        rotationMatrix.lookAt(target, this.character.position, this.character.up)
+        this.targetQuaternion.setFromRotationMatrix(rotationMatrix)
+
+        if (!this.character.quaternion.equals(this.targetQuaternion)) {
+            this.character.quaternion.rotateTowards(this.targetQuaternion, this.moveFactor)
         }
     }
 
@@ -148,7 +183,7 @@ export class SceneLoader {
         this.mixers.forEach((m, i) => {
             m.update(this.clock.getDelta());
         });
-        this.checkForCharacterMovement();
+        this.checkForCharacterMovement(this.clock.getDelta());
         this.renderer.render(this.scene, this.camera);
     }
 }
