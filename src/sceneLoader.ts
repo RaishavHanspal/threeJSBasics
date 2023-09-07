@@ -42,6 +42,7 @@ export class SceneLoader {
 
     private addElements() {
         this.loadJsonScene();
+        this.loadImageSymbols();
     }
 
     /** better approach then GLTF - 
@@ -213,5 +214,15 @@ export class SceneLoader {
         this.reel && this.reel.update();
         this.characterReady && this.checkForCharacterMovement(this.clock.getDelta());
         this.renderer.render(this.scene, this.camera);
+    }
+
+    private loadImageSymbols(){
+        for(let i = 1; i <= 5; i++ ){
+            /** load file name can be controlled from a json structure
+             * @todo - just to check
+             */
+            const fileName: string = i + ".png";
+            utilsObj.loadFile(this.scene, fileName, "image")
+        }
     }
 }

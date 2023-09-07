@@ -1,4 +1,4 @@
-import { AnimationAction, AnimationClip, AnimationMixer, Scene } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, CanvasTexture, ImageBitmapLoader, Scene } from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { LoadFileType } from "../interface";
@@ -8,6 +8,7 @@ import { ObjectLoader } from "three/src/loaders/ObjectLoader";
 export class Utils {
     /** map to hold all loaders */
     private loaders: Map<LoadFileType, any>;
+    public textureCache: any = {};
     constructor() {
         this.initializeLoaders();
     }
@@ -18,6 +19,7 @@ export class Utils {
         this.loaders.set("font", new FontLoader());
         this.loaders.set("gltf", new GLTFLoader());
         this.loaders.set("scene", new ObjectLoader());
+        this.loaders.set("image", new ImageBitmapLoader());
     }
 
     /** maintain single mixer for one model */
@@ -54,9 +56,28 @@ export class Utils {
     public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, relPath: string = "assets/"): void {
         const loader: any = this.loaders.get(fileType);
         loader.load(relPath + fileName, (obj: any) => {
-            scene.add(fileType === "gltf" ? obj.scene : obj);
+            if(fileType === "image"){
+                this.textureCache[fileName] = obj;
+            }
+            else{
+                scene.add(fileType === "gltf" ? obj.scene : obj);
+            }
             this.applyOpts(obj, opts);
             callback && callback(obj);
         });
+    }
+
+    public getRandomNumber(min: number = 0, max?: number){
+        return Math.round(Math.random() * (max - min)) + min;
+    }
+
+    public getTexture(textureKey: string): any {
+        const texture = this.textureCache[textureKey];
+        if(!texture){
+            console.error("Texture not loaded!");
+            return;
+        }
+        const canvasTexture = new CanvasTexture(texture);
+        return canvasTexture;
     }
 }

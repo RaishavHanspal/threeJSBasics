@@ -1,4 +1,4 @@
-import { Mesh, MeshBasicMaterial, Object3D, PlaneGeometry } from "three";
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PlaneGeometry, Vector3 } from "three";
 
 export class reel extends Object3D {
     private readonly symCount = 4;
@@ -12,7 +12,7 @@ export class reel extends Object3D {
     private init(){
         new Object3D();
         for (let i = 0; i < this.symCount; i++) {
-            this.add(this.getPlane(0.5 + (i * this.reelDimensions.y), this.getRandomColor()));
+            this.add(this.getPlane(((i + 0.5) * this.reelDimensions.y), this.getRandomColor()));
         }
     }
 
@@ -30,13 +30,20 @@ export class reel extends Object3D {
     }
 
     private getPlane(posY: number, color: string): Mesh {
-        const planeGeometry = new PlaneGeometry(this.reelDimensions.x, this.reelDimensions.y);
+        /** this can be configurable - since we don't know what way the reel will be created 
+         * can also use @PlaneGeometry
+        */
+        const geometry = new BoxGeometry(this.reelDimensions.x, this.reelDimensions.y, this.reelDimensions.x);
         const material = new MeshBasicMaterial({
-            color,
+            map: utilsObj.getTexture(utilsObj.getRandomNumber(1, 5) + ".png")
         })
-        const plane = new Mesh(planeGeometry, material);
-        plane.position.y = posY;
-        return plane;
+        const mesh = new Mesh(geometry, material);
+        /** @todo: have a look - added workaround for inverted mesh */
+        mesh.scale.x = -1;
+        mesh.scale.y = -1;
+        mesh.scale.z = -1;
+        mesh.position.y = posY;
+        return mesh;
     }
 
     /** @todo - need to use delta to maintain correct time */
@@ -48,11 +55,10 @@ export class reel extends Object3D {
                 /** remove the bottom most symbol */
                 const lastSym = this.children.shift();
                 this.remove(lastSym);
-                this.children.forEach((sym: Mesh, i) => (sym.position.y = (i * this.reelDimensions.y) + 0.5));
+                this.children.forEach((sym: Mesh, i) => (sym.position.y = ((i + 0.5) * this.reelDimensions.y)));
                 /** add new sym */
-                this.add(this.getPlane((3 * this.reelDimensions.y) + 0.5, this.getRandomColor()))
+                this.add(this.getPlane((3.5 * this.reelDimensions.y), this.getRandomColor()))
             }
         }
     }
-
 }
