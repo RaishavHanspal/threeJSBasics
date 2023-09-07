@@ -5,6 +5,7 @@
     "removeComments": true,
     "preserveConstEnums": true,
     "sourceMap": true,
+    "target": "ES2017",
     "declaration": true,
     "moduleResolution": "node",
     "outDir": "./dist",

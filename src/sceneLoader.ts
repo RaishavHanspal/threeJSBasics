@@ -1,6 +1,8 @@
 import { Scene } from "three/src/scenes/Scene";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
-import { AnimationAction, AnimationClip, AnimationMixer, Box3, Clock, Color, LoopOnce, Matrix4, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
+import { reel } from "./elements/reel";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -15,6 +17,7 @@ export class SceneLoader {
     private toIdleTimeOut: NodeJS.Timeout;
     private targetQuaternion: Quaternion;
     private runToggle: boolean = false;
+    private reel: reel;
     /** true when all animation have been loaded */
     private characterReady: Boolean = false;
     private readonly moveFactor: number = 0.05;
@@ -98,7 +101,19 @@ export class SceneLoader {
         this.setupVR();
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
+        this.createReel();
+        new OrbitControls(this.camera, this.renderer.domElement);
         window.addEventListener('resize', this.resize.bind(this), false);
+    }
+
+    private createReel(): void {
+        this.reel = new reel();
+        this.scene.add(this.reel);
+        this.reel.rotation.y = Math.PI;
+        /** use delay to start spinning */
+        setTimeout(() => {
+            this.reel.spin();
+        }, 5000);
     }
 
     private setupVR(): void {
@@ -195,6 +210,7 @@ export class SceneLoader {
         this.mixers.forEach((m, i) => {
             m.update(this.clock.getDelta());
         });
+        this.reel && this.reel.update();
         this.characterReady && this.checkForCharacterMovement(this.clock.getDelta());
         this.renderer.render(this.scene, this.camera);
     }
