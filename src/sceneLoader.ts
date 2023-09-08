@@ -102,13 +102,13 @@ export class SceneLoader {
         this.setupVR();
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
-        this.createReel();
+        this.createReels();
         new OrbitControls(this.camera, this.renderer.domElement);
         window.addEventListener('resize', this.resize.bind(this), false);
     }
 
-    private createReel(): void {
-        this.reelPanel = new reelpanel(4, 4);
+    private createReels(): void {
+        this.reelPanel = new reelpanel(5, 3);
         this.scene.add(this.reelPanel);
         /** use delay to start spinning */
         setTimeout(() => {
@@ -174,18 +174,22 @@ export class SceneLoader {
         const moveFactor = this.moveFactor * (this.runToggle ? 5 : 1);
         if (this.keyPressedMap["KeyW"]) {
             this.map.translateZ(-moveFactor);
+            this.reelPanel.translateZ(-moveFactor);
             z++;
         }
         if (this.keyPressedMap["KeyS"]) {
             this.map.translateZ(moveFactor);
+            this.reelPanel.translateZ(moveFactor);
             z--;
         }
         if (this.keyPressedMap["KeyA"]) {
             this.map.translateX(-moveFactor);
+            this.reelPanel.translateX(-moveFactor);
             x++;
         }
         if (this.keyPressedMap["KeyD"]) {
             this.map.translateX(moveFactor);
+            this.reelPanel.translateX(moveFactor);
             x--;
         }
         const rotationMatrix = new Matrix4()

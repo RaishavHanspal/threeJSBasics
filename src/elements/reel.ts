@@ -10,7 +10,8 @@ export class reel extends Object3D {
 
     private init(){
         new Object3D();
-        for (let i = 0; i < this.symCount; i++) {
+        /** additional symbol on top for reelspin */
+        for (let i = 0; i <= this.symCount; i++) {
             this.add(this.getPlane(((i + 0.5) * this.reelDimensions.y), this.getRandomColor()));
         }
     }
@@ -32,7 +33,7 @@ export class reel extends Object3D {
         /** this can be configurable - since we don't know what way the reel will be created 
          * can also use @PlaneGeometry
         */
-        const geometry = new BoxGeometry(this.reelDimensions.x, this.reelDimensions.y, this.reelDimensions.x);
+        const geometry = new BoxGeometry(this.reelDimensions.x, this.reelDimensions.y, this.reelDimensions.z);
         const material = new MeshPhongMaterial({
             map: utilsObj.getTexture(utilsObj.getRandomNumber(1, 5) + ".png"),
             reflectivity: 1,
@@ -64,7 +65,7 @@ export class reel extends Object3D {
                 this.remove(lastSym);
                 this.children.forEach((sym: Mesh, i) => (sym.position.y = ((i + 0.5) * this.reelDimensions.y)));
                 /** add new sym */
-                this.add(this.getPlane((3.5 * this.reelDimensions.y), this.getRandomColor()))
+                this.add(this.getPlane(((this.symCount + 0.5) * this.reelDimensions.y), this.getRandomColor()))
             }
         }
     }
