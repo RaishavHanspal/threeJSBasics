@@ -1,10 +1,9 @@
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PlaneGeometry, Vector3 } from "three";
+import { BoxGeometry, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhongMaterial, MeshPhysicalMaterial, Object3D, PlaneGeometry, Vector3 } from "three";
 
 export class reel extends Object3D {
-    private readonly symCount = 4;
-    private readonly reelDimensions = { x: 4, y: 4};
     private spinning: boolean = false;
-    constructor(){
+    private spinSpeed: number = 0.1;
+    constructor(private symCount: number, private reelDimensions: any){
         super();
         this.init();
     }
@@ -34,8 +33,16 @@ export class reel extends Object3D {
          * can also use @PlaneGeometry
         */
         const geometry = new BoxGeometry(this.reelDimensions.x, this.reelDimensions.y, this.reelDimensions.x);
-        const material = new MeshBasicMaterial({
-            map: utilsObj.getTexture(utilsObj.getRandomNumber(1, 5) + ".png")
+        const material = new MeshPhongMaterial({
+            map: utilsObj.getTexture(utilsObj.getRandomNumber(1, 5) + ".png"),
+            reflectivity: 1,
+            flatShading: true,
+            refractionRatio: 1,
+            emissive: "#fff",
+            emissiveIntensity: 0.005,
+            shininess: 0.5,
+            specular: "#B00",
+            color: "#fff"
         })
         const mesh = new Mesh(geometry, material);
         /** @todo: have a look - added workaround for inverted mesh */
@@ -49,7 +56,7 @@ export class reel extends Object3D {
     /** @todo - need to use delta to maintain correct time */
     public update(): void {
         if (this.spinning) {
-            this.position.y -= 0.05;
+            this.position.y -= this.spinSpeed;
             if (this.position.y < - this.reelDimensions.y) {
                 this.position.y = 0;
                 /** remove the bottom most symbol */

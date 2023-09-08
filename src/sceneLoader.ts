@@ -2,7 +2,7 @@ import { Scene } from "three/src/scenes/Scene";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
 import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
-import { reel } from "./elements/reel";
+import { reelpanel } from "./elements/reelpanel";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -17,7 +17,7 @@ export class SceneLoader {
     private toIdleTimeOut: NodeJS.Timeout;
     private targetQuaternion: Quaternion;
     private runToggle: boolean = false;
-    private reel: reel;
+    private reelPanel: reelpanel;
     /** true when all animation have been loaded */
     private characterReady: Boolean = false;
     private readonly moveFactor: number = 0.05;
@@ -108,12 +108,11 @@ export class SceneLoader {
     }
 
     private createReel(): void {
-        this.reel = new reel();
-        this.scene.add(this.reel);
-        this.reel.rotation.y = Math.PI;
+        this.reelPanel = new reelpanel(4, 4);
+        this.scene.add(this.reelPanel);
         /** use delay to start spinning */
         setTimeout(() => {
-            this.reel.spin();
+            this.reelPanel.spin();
         }, 5000);
     }
 
@@ -211,7 +210,7 @@ export class SceneLoader {
         this.mixers.forEach((m, i) => {
             m.update(this.clock.getDelta());
         });
-        this.reel && this.reel.update();
+        this.reelPanel && this.reelPanel.update();
         this.characterReady && this.checkForCharacterMovement(this.clock.getDelta());
         this.renderer.render(this.scene, this.camera);
     }
