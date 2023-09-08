@@ -1,4 +1,4 @@
-import { AnimationAction, AnimationClip, AnimationMixer, CanvasTexture, ImageBitmapLoader, Scene } from "three";
+import { AnimationAction, AnimationClip, AnimationMixer, CanvasTexture, ImageBitmapLoader, Mesh, Object3D, Scene } from "three";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { LoadFileType } from "../interface";
@@ -9,6 +9,7 @@ export class Utils {
     /** map to hold all loaders */
     private loaders: Map<LoadFileType, any>;
     public textureCache: any = {};
+    private sceneMeshes: Object3D[] = [];
     constructor() {
         this.initializeLoaders();
     }
@@ -79,5 +80,13 @@ export class Utils {
         }
         const canvasTexture = new CanvasTexture(texture);
         return canvasTexture;
+    }
+
+    public getSceneMeshes(): Object3D[]{
+        return this.sceneMeshes;
+    }
+
+    public addSceneMesh(mesh: Mesh): void{
+        this.sceneMeshes.push(mesh);
     }
 }

@@ -17,7 +17,7 @@ export class reelpanel extends Object3D{
             additionalOffset = - this.reelDimensions.x / 2;
         }
         for (let i = 0; i < this.reelCount; i++) {
-            const newReel = new reel(this.symPerReel, this.reelDimensions);
+            const newReel = new reel(this.symPerReel, this.reelDimensions, i);
             newReel.position.x = (this.reelCount - Math.ceil(this.reelCount / 2) - i) * this.reelDimensions.x + additionalOffset;
             this.reels.push(newReel);
             this.add(newReel);
@@ -35,7 +35,13 @@ export class reelpanel extends Object3D{
 
     public spin(reelIndex: number = 0): void{
         console.log(reelIndex);
-        this.reels[reelIndex].spin();
+        if(!this.reels[reelIndex].isSpinning()){
+            this.reels[reelIndex].spin();
+        }
+        else{
+            this.reels[reelIndex].stop();
+
+        }
         setTimeout(() => {
             reelIndex++;
             if(reelIndex < this.reels.length){
@@ -45,7 +51,7 @@ export class reelpanel extends Object3D{
         // this.reels.forEach(reel => reel.spin());
     }
 
-    public update(): void{
-        this.reels.length && this.reels.forEach((reel => reel.update()));
+    public update(deltaTime: number): void{
+        this.reels.length && this.reels.forEach((reel => reel.update(deltaTime)));
     }
 }

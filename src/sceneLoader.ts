@@ -1,7 +1,7 @@
 import { Scene } from "three/src/scenes/Scene";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
-import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
 import { reelpanel } from "./elements/reelpanel";
 export class SceneLoader {
     private scene: Scene;
@@ -18,6 +18,7 @@ export class SceneLoader {
     private targetQuaternion: Quaternion;
     private runToggle: boolean = false;
     private reelPanel: reelpanel;
+    private raycaster: Raycaster;
     /** true when all animation have been loaded */
     private characterReady: Boolean = false;
     private readonly moveFactor: number = 0.05;
@@ -103,22 +104,42 @@ export class SceneLoader {
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
         this.createReels();
+        this.raycaster = new Raycaster();
+        // this.updateRaycaster();
+        // setInterval(this.updateRaycaster.bind(this), 10000);
+        window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
         new OrbitControls(this.camera, this.renderer.domElement);
         window.addEventListener('resize', this.resize.bind(this), false);
     }
 
     private createReels(): void {
         this.reelPanel = new reelpanel(5, 3);
+        this.reelPanel.position.z = 25;
         this.scene.add(this.reelPanel);
         /** use delay to start spinning */
-        setTimeout(() => {
-            this.reelPanel.spin();
-        }, 5000);
+        // setTimeout(() => {
+        //     this.reelPanel.spin();
+        // }, 5000);
     }
 
     private setupVR(): void {
         this.renderer.xr.enabled = true;
         document.body.appendChild(VRButton.createButton(this.renderer));
+    }
+
+    private updateRaycaster(event: any): void {
+        const pos = new Vector2((event.clientX / this.renderer.domElement.clientWidth) * 2 - 1, -(event.clientY / this.renderer.domElement.clientHeight) * 2 + 1);
+        this.raycaster.setFromCamera(pos, this.camera);
+        const intersects = this.raycaster.intersectObjects(utilsObj.getSceneMeshes(), false);
+        console.log(intersects);
+        if(intersects.length){
+            for(let i =0 ; i< intersects.length; i++){
+                if(intersects[i].object.name.includes("reel")){
+                    this.reelPanel.spin();
+                    break;
+                }
+            }
+        }
     }
 
     private addCharacterControls(mixer?: AnimationMixer): void {
@@ -211,16 +232,17 @@ export class SceneLoader {
     private animate() {
         // requestAnimationFrame(this.animate.bind(this));
         /** update instance of all fbx animations */
+        const delta: number = this.clock.getDelta();
         this.mixers.forEach((m, i) => {
-            m.update(this.clock.getDelta());
+            m.update(delta);
         });
-        this.reelPanel && this.reelPanel.update();
-        this.characterReady && this.checkForCharacterMovement(this.clock.getDelta());
+        this.reelPanel && this.reelPanel.update(delta);
+        this.characterReady && this.checkForCharacterMovement(delta);
         this.renderer.render(this.scene, this.camera);
     }
 
-    private loadImageSymbols(){
-        for(let i = 1; i <= 5; i++ ){
+    private loadImageSymbols() {
+        for (let i = 1; i <= 5; i++) {
             /** load file name can be controlled from a json structure
              * @todo - just to check
              */
