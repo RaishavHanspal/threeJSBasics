@@ -20,6 +20,7 @@ export class SceneLoader {
     private runToggle: boolean = false;
     private reelPanel: reelpanel;
     private raycaster: Raycaster;
+    private viewInitialized: boolean = false;
     /** true when all animation have been loaded */
     private characterReady: Boolean = false;
     private readonly moveFactor: number = 0.05;
@@ -44,7 +45,7 @@ export class SceneLoader {
 
     private addElements() {
         this.loadJsonScene();
-        this.loadImageSymbols();
+        this.loadImageSymbols(this.createReels.bind(this));
     }
 
     /** better approach then GLTF - 
@@ -104,22 +105,13 @@ export class SceneLoader {
         this.setupVR();
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
-        this.createReels();
-        /** basic movement to check tweening */
-        this.tweenCharacterPosition({z: 3}, "KeyW", this.tweenCharacterPosition.bind(this, { z : -10}, "KeyS"));
-        this.raycaster = new Raycaster();
-        // this.updateRaycaster();
-        // setInterval(this.updateRaycaster.bind(this), 10000);
-        window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
-        new OrbitControls(this.camera, this.renderer.domElement);
-        window.addEventListener('resize', this.resize.bind(this), false);
     }
 
-    private tweenCharacterPosition(finalPosObj: any, keyPress: string, callback: () => any): void{
+    private tweenCharacterPosition(finalPosObj: any, keyPress: string, callback: () => any): void {
         new TWEEN.Tween(this.character.position).to(finalPosObj, 5000).onStart(() => {
-            this.bindKeyInputHandlers({code: keyPress, type : "keydown"});
+            this.bindKeyInputHandlers({ code: keyPress, type: "keydown" });
         }).onComplete(() => {
-            this.bindKeyInputHandlers({code: keyPress, type : "keyup"});
+            this.bindKeyInputHandlers({ code: keyPress, type: "keyup" });
             callback && callback();
         }).delay(1000).start();
     }
@@ -144,9 +136,9 @@ export class SceneLoader {
         this.raycaster.setFromCamera(pos, this.camera);
         const intersects = this.raycaster.intersectObjects(utilsObj.getSceneMeshes(), false);
         console.log(intersects);
-        if(intersects.length){
-            for(let i =0 ; i< intersects.length; i++){
-                if(intersects[i].object.name.includes("reel")){
+        if (intersects.length) {
+            for (let i = 0; i < intersects.length; i++) {
+                if (intersects[i].object.name.includes("reel")) {
                     this.reelPanel.spin();
                     break;
                 }
@@ -195,10 +187,10 @@ export class SceneLoader {
         if (toAction != this.activeCharacterAction) {
             this.lastCharacterAction = this.activeCharacterAction
             this.activeCharacterAction = toAction
-            this.lastCharacterAction.fadeOut(1)
-            this.activeCharacterAction.reset()
-            this.activeCharacterAction.fadeIn(1)
-            this.activeCharacterAction.play()
+            this.lastCharacterAction?.fadeOut(1)
+            this.activeCharacterAction?.reset()
+            this.activeCharacterAction?.fadeIn(1)
+            this.activeCharacterAction?.play()
         }
     }
 
@@ -249,18 +241,37 @@ export class SceneLoader {
         this.mixers.forEach((m, i) => {
             m.update(delta);
         });
+        /** @todo - this is just a workaround, ideally there should be proper load states
+         * update logic once added
+         */
+        if (!this.viewInitialized) {
+            if (this.characterReady && this.reelPanel) {
+                this.viewInitialized = true;
+                this.startPlay();
+            }
+        }
         this.reelPanel && this.reelPanel.update(delta);
         this.characterReady && this.checkForCharacterMovement(delta);
         this.renderer.render(this.scene, this.camera);
     }
 
-    private loadImageSymbols() {
-        for (let i = 1; i <= 5; i++) {
+    private startPlay() {
+        /** basic movement to check tweening */
+        this.tweenCharacterPosition({ z: 3 }, "KeyW", this.tweenCharacterPosition.bind(this, { z: -10 }, "KeyS"));
+        this.raycaster = new Raycaster();
+        window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
+        new OrbitControls(this.camera, this.renderer.domElement);
+        window.addEventListener('resize', this.resize.bind(this), false);
+    }
+
+    private loadImageSymbols(endCallback?: () => void) {
+        const lastSymId = 5;
+        for (let i = 1; i <= lastSymId; i++) {
             /** load file name can be controlled from a json structure
              * @todo - just to check
              */
             const fileName: string = i + ".png";
-            utilsObj.loadFile(this.scene, fileName, "image")
+            utilsObj.loadFile(this.scene, fileName, "image", i === lastSymId && endCallback)
         }
     }
 }
