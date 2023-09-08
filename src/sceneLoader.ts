@@ -3,6 +3,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
 import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
 import { reelpanel } from "./elements/reelpanel";
+import TWEEN from "@tweenjs/tween.js";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -104,12 +105,23 @@ export class SceneLoader {
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
         this.createReels();
+        /** basic movement to check tweening */
+        this.tweenCharacterPosition({z: 3}, "KeyW", this.tweenCharacterPosition.bind(this, { z : -10}, "KeyS"));
         this.raycaster = new Raycaster();
         // this.updateRaycaster();
         // setInterval(this.updateRaycaster.bind(this), 10000);
         window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
         new OrbitControls(this.camera, this.renderer.domElement);
         window.addEventListener('resize', this.resize.bind(this), false);
+    }
+
+    private tweenCharacterPosition(finalPosObj: any, keyPress: string, callback: () => any): void{
+        new TWEEN.Tween(this.character.position).to(finalPosObj, 5000).onStart(() => {
+            this.bindKeyInputHandlers({code: keyPress, type : "keydown"});
+        }).onComplete(() => {
+            this.bindKeyInputHandlers({code: keyPress, type : "keyup"});
+            callback && callback();
+        }).delay(1000).start();
     }
 
     private createReels(): void {
@@ -233,6 +245,7 @@ export class SceneLoader {
         // requestAnimationFrame(this.animate.bind(this));
         /** update instance of all fbx animations */
         const delta: number = this.clock.getDelta();
+        TWEEN.update();
         this.mixers.forEach((m, i) => {
             m.update(delta);
         });
