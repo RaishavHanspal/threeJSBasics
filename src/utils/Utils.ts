@@ -54,17 +54,21 @@ export class Utils {
         }
     }
 
-    public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, relPath: string = "assets/"): void {
+    public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, totalCount: number = 1, relPath: string = "assets/"): void {
         const loader: any = this.loaders.get(fileType);
         loader.load(relPath + fileName, (obj: any) => {
             if(fileType === "image"){
                 this.textureCache[fileName] = obj;
+                /** only call the callback once all the files have been loaded */
+                if(Object.keys(this.textureCache).length === totalCount){
+                    callback && callback(obj);
+                }
             }
             else{
                 scene.add(fileType === "gltf" ? obj.scene : obj);
             }
             this.applyOpts(obj, opts);
-            callback && callback(obj);
+            fileType !== "image" && callback && callback(obj);
         });
     }
 

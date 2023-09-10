@@ -103,12 +103,13 @@ export class SceneLoader {
     private startRender() {
         // this.animate();
         this.setupVR();
+        window.addEventListener('resize', this.resize.bind(this), false);
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
     }
 
     private tweenCharacterPosition(finalPosObj: any, keyPress: string, callback: () => any): void {
-        new TWEEN.Tween(this.character.position).to(finalPosObj, 5000).onStart(() => {
+        new TWEEN.Tween(this.character.position).to(finalPosObj, 3000).onStart(() => {
             this.bindKeyInputHandlers({ code: keyPress, type: "keydown" });
         }).onComplete(() => {
             this.bindKeyInputHandlers({ code: keyPress, type: "keyup" });
@@ -153,9 +154,6 @@ export class SceneLoader {
                 this.characterReady = true;
             });
         })
-        /** add handlers to key events to change animations */
-        document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
-        document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
     }
 
     private bindKeyInputHandlers(evt: any): void {
@@ -250,6 +248,7 @@ export class SceneLoader {
                 this.startPlay();
             }
         }
+        // this.viewInitialized && this.checkIfColliding(this.character);
         this.reelPanel && this.reelPanel.update(delta);
         this.characterReady && this.checkForCharacterMovement(delta);
         this.renderer.render(this.scene, this.camera);
@@ -257,11 +256,15 @@ export class SceneLoader {
 
     private startPlay() {
         /** basic movement to check tweening */
-        this.tweenCharacterPosition({ z: 3 }, "KeyW", this.tweenCharacterPosition.bind(this, { z: -10 }, "KeyS"));
+        this.tweenCharacterPosition({ z: 3 }, "KeyW",
+            this.tweenCharacterPosition.bind(this, { z: -10 }, "KeyS", () => {
+                /** add handlers to key events to change animations */
+                document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
+                document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
+            }));
         this.raycaster = new Raycaster();
         window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
         new OrbitControls(this.camera, this.renderer.domElement);
-        window.addEventListener('resize', this.resize.bind(this), false);
     }
 
     private loadImageSymbols(endCallback?: () => void) {
@@ -271,7 +274,28 @@ export class SceneLoader {
              * @todo - just to check
              */
             const fileName: string = i + ".png";
-            utilsObj.loadFile(this.scene, fileName, "image", i === lastSymId && endCallback)
+            utilsObj.loadFile(this.scene, fileName, "image", endCallback, null, lastSymId)
         }
+    }
+
+    private collisionRaycaster: Raycaster;
+    private isColliding: boolean = false;
+    /** check if two bodies are colliding with each other */
+    private checkIfColliding(body: any): void {
+        if (!this.collisionRaycaster) {
+            this.collisionRaycaster = new Raycaster()
+        }
+        // const pos = new Vector2(body.position.x, body.position.y);
+        const intersects = this.collisionRaycaster.intersectObjects(utilsObj.getSceneMeshes(), false);
+        if (intersects.length) {
+            let leastDistance = 10;
+            intersects.forEach(intersect => {
+                if (intersect.distance < leastDistance) {
+                    leastDistance = intersect.distance;
+                }
+            });
+            this.isColliding = leastDistance !== 10;
+        }
+        else { this.isColliding = false; }
     }
 }
