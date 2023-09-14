@@ -1,9 +1,11 @@
 import { Scene } from "three/src/scenes/Scene";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
-import { AnimationAction, AnimationClip, AnimationMixer, Box3, BoxGeometry, Clock, Color, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, ArcCurve, Box3, BoxGeometry, Clock, Color, CylinderGeometry, DoubleSide, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, SphereGeometry, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
 import { reelpanel } from "./elements/reelpanel";
 import TWEEN from "@tweenjs/tween.js";
+import * as CANNON from "cannon-es"
+import { CSG } from 'three-csg-ts';
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -103,9 +105,95 @@ export class SceneLoader {
     private startRender() {
         // this.animate();
         this.setupVR();
+        setTimeout(() => {
+            this.createPhysicsElements();
+        }, 2000);
         window.addEventListener('resize', this.resize.bind(this), false);
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
+    }
+
+    private world: CANNON.World;
+    private createPhysicsElements(): void {
+        this.world = new CANNON.World();
+        this.world.gravity.set(0, -9.82, 0);
+        const planeGeometry = new PlaneGeometry(20, 20, 2, 2);
+        const planeGeometry1 = new PlaneGeometry(20, 20, 2, 2);
+        const ballGeometry = new SphereGeometry(0.5);
+        const planeMaterial = new MeshPhysicalMaterial({
+            side: DoubleSide,
+            color: "#ff0000"
+        });
+        const planeMaterial1 = new MeshPhysicalMaterial({
+            side: DoubleSide,
+            color: "#ff0000"
+        });
+        const sphereMaterial = new MeshPhysicalMaterial({
+            side: DoubleSide,
+            color: "#00ff00"
+        })
+        const groundMaterial = new CANNON.Material();
+        const mat = new CANNON.Material();
+        const planeMesh = new Mesh(planeGeometry, planeMaterial);
+        planeMesh.rotateX(-Math.PI / 2)
+        planeMesh.position.y = 1
+        const plane = new CANNON.Plane();
+        const planeBody = new CANNON.Body({ mass: 0, material: groundMaterial });
+        planeBody.position.y = 1;
+        planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+        planeBody.addShape(plane);
+        this.world.addBody(planeBody);
+        this.linkPhysics(planeMesh, planeBody);
+
+        const planeMesh1 = new Mesh(planeGeometry1, planeMaterial1);
+        planeMesh1.rotateX(Math.PI / 2)
+        planeMesh1.position.y = 6;
+        const plane1 = new CANNON.Plane();
+        const planeBody1 = new CANNON.Body({ mass: 0 });
+        planeBody1.position.y = 6;
+        planeBody1.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
+        planeBody1.addShape(plane1);
+        this.world.addBody(planeBody1);
+        this.linkPhysics(planeMesh1, planeBody1);
+
+        const ballMesh = new Mesh(ballGeometry, sphereMaterial);
+        ballMesh.position.y = 5;
+        this.scene.add(planeMesh1);
+        this.scene.add(planeMesh);
+        this.scene.add(ballMesh);
+        const sphere = new CANNON.Sphere(0.5);
+        const ballBody = new CANNON.Body({ mass: 1, material: mat });
+        ballBody.addShape(sphere);
+        ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
+        this.world.addBody(ballBody);
+        this.linkPhysics(ballMesh, ballBody);
+        const matground = new CANNON.ContactMaterial(groundMaterial, mat, { friction: 0.0, restitution: 2 });
+        this.world.addContactMaterial(matground);
+    }
+
+    private hollowCylinder() {
+        // Cylinder constructor parameters:  
+        // radiusAtTop, radiusAtBottom, height, segmentsAroundRadius, segmentsAlongHeight
+        let smallCylinderGeom = new CylinderGeometry(30, 30, 80, 20, 4);
+        let largeCylinderGeom = new CylinderGeometry(40, 40, 80, 20, 4);
+        let redMaterial = new MeshLambertMaterial({ color: 0xff0000 });
+        let blueMaterial = new MeshLambertMaterial({ color: 0x00ff00 });
+        let smallCylinder = new Mesh(smallCylinderGeom, redMaterial);
+        let largeCylinder = new Mesh(largeCylinderGeom, blueMaterial);
+        // Make sure the .matrix of each mesh is current
+        smallCylinder.updateMatrix();
+        largeCylinder.updateMatrix();
+
+        // Perform CSG operations
+        // The result is a THREE.Mesh that you can add to your scene...
+        const hollowCylinder = CSG.subtract(largeCylinder, smallCylinder);
+        hollowCylinder.scale.set(0.05, 0.05, 0.05)
+        this.scene.add(hollowCylinder);
+    }
+
+    private physicsArray: Array<Array<any>> = [];
+    private linkPhysics(sceneMesh: Mesh, physicsBody: CANNON.Body) {
+        this.physicsArray.push([sceneMesh, physicsBody]);
     }
 
     private tweenCharacterPosition(finalPosObj: any, keyPress: string, callback: () => any): void {
@@ -248,6 +336,21 @@ export class SceneLoader {
                 this.startPlay();
             }
         }
+        this.world && this.world.step(delta)
+        this.physicsArray.length && this.physicsArray.forEach((physicsEntry: Array<any>) => {
+            const [sceneMesh, physicsBody] = physicsEntry;
+            sceneMesh.position.set(
+                physicsBody.position.x,
+                physicsBody.position.y,
+                physicsBody.position.z,
+            );
+            sceneMesh.quaternion.set(
+                physicsBody.quaternion.x,
+                physicsBody.quaternion.y,
+                physicsBody.quaternion.z,
+                physicsBody.quaternion.w,
+            );
+        })
         // this.viewInitialized && this.checkIfColliding(this.character);
         this.reelPanel && this.reelPanel.update(delta);
         this.characterReady && this.checkForCharacterMovement(delta);
@@ -256,12 +359,12 @@ export class SceneLoader {
 
     private startPlay() {
         /** basic movement to check tweening */
-        this.tweenCharacterPosition({ z: 3 }, "KeyW",
-            this.tweenCharacterPosition.bind(this, { z: -10 }, "KeyS", () => {
-                /** add handlers to key events to change animations */
-                document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
-                document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
-            }));
+        // this.tweenCharacterPosition({ z: 3 }, "KeyW",
+        //     this.tweenCharacterPosition.bind(this, { z: -10 }, "KeyS", () => {
+        /** add handlers to key events to change animations */
+        document.addEventListener("keydown", this.bindKeyInputHandlers.bind(this), false);
+        document.addEventListener("keyup", this.bindKeyInputHandlers.bind(this), false);
+        // }));
         this.raycaster = new Raycaster();
         window.addEventListener('mousedown', this.updateRaycaster.bind(this), false);
         new OrbitControls(this.camera, this.renderer.domElement);

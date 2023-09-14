@@ -1,3 +1,4 @@
+import { Lotto } from "./lotto";
 import { MainGame } from "./main";
 import { SceneLoader } from "./sceneLoader";
 import { Utils } from "./utils/Utils";
@@ -9,4 +10,5 @@ declare global {
 window.utilsObj = new Utils();
 
 // window.mainScene = new MainGame();
-window.mainScene = new SceneLoader();
+// window.mainScene = new SceneLoader();
+new Lotto();
