@@ -234,37 +234,37 @@ objLoader.load(
                             inverseSphereMaterial
                     inverseSphere.position.x = 0
                     inverseSphere.position.y = 5
-                    var constraintBody = new CANNON.Body({ mass: 0 })
-                    constraintBody.addShape(new CANNON.Sphere(0.01))
-                    constraintBody.position.set(0, 5, 0)
-                    world.addBody(constraintBody)
+                    // var constraintBody = new CANNON.Body({ mass: 0 })
+                    // constraintBody.addShape(new CANNON.Sphere(0.01))
+                    // constraintBody.position.set(0, 5, 0)
+                    // world.addBody(constraintBody)
                     const shape = CannonUtils.CreateTrimesh(
                         (inverseSphere as THREE.Mesh).geometry
                     )
-                    inverseSphereBody = new CANNON.Body({ mass: 100 })
+                    inverseSphereBody = new CANNON.Body({ mass: 0 })
                     inverseSphereBody.addShape(shape)
                     inverseSphereBody.position.x = inverseSphere.position.x
                     inverseSphereBody.position.y = inverseSphere.position.y
                     inverseSphereBody.position.z = inverseSphere.position.z
                     world.addBody(inverseSphereBody)
-                    const c = new CANNON.PointToPointConstraint(
-                        constraintBody,
-                        new CANNON.Vec3(0, 0, 0),
-                        inverseSphereBody,
-                        new CANNON.Vec3(0, 0, 0)
-                    )
-                    world.addConstraint(c)
+                    // const c = new CANNON.PointToPointConstraint(
+                    //     constraintBody,
+                    //     new CANNON.Vec3(0, 0, 0),
+                    //     inverseSphereBody,
+                    //     new CANNON.Vec3(0, 0, 0)
+                    // )
+                    // worl d.addConstraint(c)
                 } else if (child.name.startsWith('outerRail_')) {
-                    outerRail = child
-                        ; (outerRail as THREE.Mesh).material = railMaterial
-                    outerRail.position.y = 5
-                    const outerRailShape = CannonUtils.CreateTrimesh(
-                        (outerRail as THREE.Mesh).geometry
-                    )
-                    const outerRailBody = new CANNON.Body({ mass: 0 })
-                    outerRailBody.addShape(outerRailShape)
-                    outerRailBody.position.set(0, 5, 0)
-                    world.addBody(outerRailBody)
+                    // outerRail = child
+                    //     ; (outerRail as THREE.Mesh).material = railMaterial
+                    // outerRail.position.y = 5
+                    // const outerRailShape = CannonUtils.CreateTrimesh(
+                    //     (outerRail as THREE.Mesh).geometry
+                    // )
+                    // const outerRailBody = new CANNON.Body({ mass: 0 })
+                    // outerRailBody.addShape(outerRailShape)
+                    // outerRailBody.position.set(0, 5, 0)
+                    // world.addBody(outerRailBody)
                 } else if (child.name.startsWith('innerRail_')) {
                     console.log(child.name)
                     innerRail = child
@@ -357,7 +357,7 @@ var animate = function () {
             sphereBody[i].quaternion.w
         )
     }
-    if (modelLoaded) {
+    if (false) {
         inverseSphereBody.angularVelocity.set(0, 0, -0.5)
         inverseSphere.position.set(
             inverseSphereBody.position.x,

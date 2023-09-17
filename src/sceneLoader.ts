@@ -1,11 +1,12 @@
 import { Scene } from "three/src/scenes/Scene";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls"
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
-import { AnimationAction, AnimationClip, AnimationMixer, ArcCurve, Box3, BoxGeometry, Clock, Color, CylinderGeometry, DoubleSide, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, SphereGeometry, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationClip, AnimationMixer, ArcCurve, Box3, BoxGeometry, Clock, Color, CylinderGeometry, DoubleSide, Group, LoopOnce, Matrix4, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Plane, PlaneGeometry, Quaternion, Raycaster, SphereGeometry, Vector2, Vector3, WebGLRenderer } from "three/src/Three";
 import { reelpanel } from "./elements/reelpanel";
 import TWEEN from "@tweenjs/tween.js";
 import * as CANNON from "cannon-es"
 import { CSG } from 'three-csg-ts';
+import CannonUtils from "./cannonUtils";
 export class SceneLoader {
     private scene: Scene;
     private camera: PerspectiveCamera;
@@ -26,6 +27,7 @@ export class SceneLoader {
     /** true when all animation have been loaded */
     private characterReady: Boolean = false;
     private readonly moveFactor: number = 0.05;
+
     constructor() {
         console.log("Start setting up a scene");
         this.initialize();
@@ -36,6 +38,8 @@ export class SceneLoader {
     private initialize() {
         this.scene = new Scene();
         this.scene.background = new Color(0x262626);
+        this.world = new CANNON.World();
+        this.world.gravity.set(0, -9.68, 0);
         this.clock = new Clock();
         this.targetQuaternion = new Quaternion();
         // this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -103,96 +107,98 @@ export class SceneLoader {
     }
 
     private startRender() {
-        // this.animate();
         this.setupVR();
-        setTimeout(() => {
-            this.createPhysicsElements();
-        }, 2000);
+        this.createPhysicsElements();
+        this.enablePhysics();
         window.addEventListener('resize', this.resize.bind(this), false);
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
     }
 
+    private characterBody: CANNON.Body;
+    // private characterMover: Object3D;
+    private enablePhysics(): void {
+        /** for character */
+        this.characterBody = new CANNON.Body({ mass: 1 });
+        this.character.position.set(0, 10, 0);
+        // this.character.traverse((e: Mesh) => {
+        //     if (e.isMesh) {
+        //         const shape = CannonUtils.CreateTrimesh(e.geometry);
+        //         this.characterBody.addShape(shape);
+        //     }
+        // });
+        this.characterBody.addShape(new CANNON.Box(new CANNON.Vec3(1, 0.5, 1)));
+        this.linkPhysics(this.character, this.characterBody);
+        this.world.addBody(this.characterBody);
+
+        /** for background */
+        // This might not work - since collision algo is not written for a trimesh on trimesh
+        const mapBody = new CANNON.Body({ mass: 0 });
+        // this.map.traverse((e: Mesh) => {
+        //     if(e.isMesh){
+        //         const shape = CannonUtils.CreateTrimesh(e.geometry);    
+        //         mapBody.addShape(shape);
+        //     }
+        // });
+        mapBody.addShape(new CANNON.Box(new CANNON.Vec3(10, 0.1, 20)));
+        this.linkPhysics(this.map, mapBody);
+        this.world.addBody(mapBody);
+    }
+
     private world: CANNON.World;
     private createPhysicsElements(): void {
-        this.world = new CANNON.World();
-        this.world.gravity.set(0, -9.82, 0);
-        const planeGeometry = new PlaneGeometry(20, 20, 2, 2);
-        const planeGeometry1 = new PlaneGeometry(20, 20, 2, 2);
-        const ballGeometry = new SphereGeometry(0.5);
+        /** purple plane - the character lands on */
+        const plane = new CANNON.Box(new CANNON.Vec3(10, 1, 450));
+        const planeGeometry = new BoxGeometry(plane.halfExtents.x * 2,
+            plane.halfExtents.y * 2,
+            plane.halfExtents.z * 2);
         const planeMaterial = new MeshPhysicalMaterial({
             side: DoubleSide,
-            color: "#ff0000"
+            color: "#ff00ff"
         });
-        const planeMaterial1 = new MeshPhysicalMaterial({
-            side: DoubleSide,
-            color: "#ff0000"
-        });
+        const planeMesh = new Mesh(planeGeometry, planeMaterial);
+        const planeBody = new CANNON.Body({ mass: 0 });
+        planeBody.position.set(planeMesh.position.x, planeMesh.position.y, planeMesh.position.z);
+        planeBody.addShape(plane);
+        this.scene.add(planeMesh);
+        this.world.addBody(planeBody);
+        this.linkPhysics(planeMesh, planeBody);
+
+        /** greenBox also landing on same platform */
+        const greenBox = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
+        const ballGeometry = new BoxGeometry(greenBox.halfExtents.x * 2, greenBox.halfExtents.y * 2, greenBox.halfExtents.z * 2);
         const sphereMaterial = new MeshPhysicalMaterial({
             side: DoubleSide,
             color: "#00ff00"
         })
-        const groundMaterial = new CANNON.Material();
-        const mat = new CANNON.Material();
-        const planeMesh = new Mesh(planeGeometry, planeMaterial);
-        planeMesh.rotateX(-Math.PI / 2)
-        planeMesh.position.y = 1
-        const plane = new CANNON.Plane();
-        const planeBody = new CANNON.Body({ mass: 0, material: groundMaterial });
-        planeBody.position.y = 1;
-        planeBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-        planeBody.addShape(plane);
-        this.world.addBody(planeBody);
-        this.linkPhysics(planeMesh, planeBody);
-
-        const planeMesh1 = new Mesh(planeGeometry1, planeMaterial1);
-        planeMesh1.rotateX(Math.PI / 2)
-        planeMesh1.position.y = 6;
-        const plane1 = new CANNON.Plane();
-        const planeBody1 = new CANNON.Body({ mass: 0 });
-        planeBody1.position.y = 6;
-        planeBody1.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), Math.PI / 2);
-        planeBody1.addShape(plane1);
-        this.world.addBody(planeBody1);
-        this.linkPhysics(planeMesh1, planeBody1);
-
         const ballMesh = new Mesh(ballGeometry, sphereMaterial);
         ballMesh.position.y = 5;
-        this.scene.add(planeMesh1);
-        this.scene.add(planeMesh);
         this.scene.add(ballMesh);
-        const sphere = new CANNON.Sphere(0.5);
-        const ballBody = new CANNON.Body({ mass: 1, material: mat });
-        ballBody.addShape(sphere);
+        const ballBody = new CANNON.Body({ mass: 1 });
+        ballBody.addShape(greenBox);
         ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
         this.world.addBody(ballBody);
         this.linkPhysics(ballMesh, ballBody);
-        const matground = new CANNON.ContactMaterial(groundMaterial, mat, { friction: 0.0, restitution: 2 });
-        this.world.addContactMaterial(matground);
     }
 
+    /** use trimesh on CSG hollow cylinder */
     private hollowCylinder() {
-        // Cylinder constructor parameters:  
-        // radiusAtTop, radiusAtBottom, height, segmentsAroundRadius, segmentsAlongHeight
         let smallCylinderGeom = new CylinderGeometry(30, 30, 80, 20, 4);
         let largeCylinderGeom = new CylinderGeometry(40, 40, 80, 20, 4);
         let redMaterial = new MeshLambertMaterial({ color: 0xff0000 });
         let blueMaterial = new MeshLambertMaterial({ color: 0x00ff00 });
         let smallCylinder = new Mesh(smallCylinderGeom, redMaterial);
         let largeCylinder = new Mesh(largeCylinderGeom, blueMaterial);
-        // Make sure the .matrix of each mesh is current
         smallCylinder.updateMatrix();
         largeCylinder.updateMatrix();
-
-        // Perform CSG operations
-        // The result is a THREE.Mesh that you can add to your scene...
         const hollowCylinder = CSG.subtract(largeCylinder, smallCylinder);
         hollowCylinder.scale.set(0.05, 0.05, 0.05)
         this.scene.add(hollowCylinder);
     }
 
     private physicsArray: Array<Array<any>> = [];
-    private linkPhysics(sceneMesh: Mesh, physicsBody: CANNON.Body) {
+    private linkPhysics(sceneMesh: any, physicsBody: CANNON.Body) {
+        physicsBody.position.set(sceneMesh.position.x, sceneMesh.position.y, sceneMesh.position.z)
         this.physicsArray.push([sceneMesh, physicsBody]);
     }
 
@@ -209,10 +215,6 @@ export class SceneLoader {
         this.reelPanel = new reelpanel(5, 3);
         this.reelPanel.position.z = 25;
         this.scene.add(this.reelPanel);
-        /** use delay to start spinning */
-        // setTimeout(() => {
-        //     this.reelPanel.spin();
-        // }, 5000);
     }
 
     private setupVR(): void {
@@ -284,30 +286,27 @@ export class SceneLoader {
         let { x, y, z } = this.character.position;
         const moveFactor = this.moveFactor * (this.runToggle ? 5 : 1);
         if (this.keyPressedMap["KeyW"]) {
-            this.map.translateZ(-moveFactor);
-            this.reelPanel.translateZ(-moveFactor);
+            this.characterBody.position.z += (moveFactor);
             z++;
         }
         if (this.keyPressedMap["KeyS"]) {
-            this.map.translateZ(moveFactor);
-            this.reelPanel.translateZ(moveFactor);
+            this.characterBody.position.z += (-moveFactor);
             z--;
         }
         if (this.keyPressedMap["KeyA"]) {
-            this.map.translateX(-moveFactor);
-            this.reelPanel.translateX(-moveFactor);
+            this.characterBody.position.x += (moveFactor);
             x++;
         }
         if (this.keyPressedMap["KeyD"]) {
-            this.map.translateX(moveFactor);
-            this.reelPanel.translateX(moveFactor);
+            this.characterBody.position.x += (-moveFactor);
             x--;
         }
         const rotationMatrix = new Matrix4()
         const target = new Vector3(x, y, z);
         rotationMatrix.lookAt(target, this.character.position, this.character.up)
-        this.targetQuaternion.setFromRotationMatrix(rotationMatrix)
-
+        this.targetQuaternion.setFromRotationMatrix(rotationMatrix);
+        this.camera.position.lerpVectors(this.camera.position,
+            new Vector3(this.character.position.x, this.character.position.y + 5, this.character.position.z - 10), 0.1)
         if (!this.character.quaternion.equals(this.targetQuaternion)) {
             this.character.quaternion.rotateTowards(this.targetQuaternion, moveFactor)
         }
@@ -344,7 +343,7 @@ export class SceneLoader {
                 physicsBody.position.y,
                 physicsBody.position.z,
             );
-            sceneMesh.quaternion.set(
+            sceneMesh.name !== "Mutant" && sceneMesh.quaternion.set(
                 physicsBody.quaternion.x,
                 physicsBody.quaternion.y,
                 physicsBody.quaternion.z,
