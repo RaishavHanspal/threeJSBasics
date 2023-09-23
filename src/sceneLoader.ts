@@ -321,7 +321,7 @@ export class SceneLoader {
     private animate() {
         // requestAnimationFrame(this.animate.bind(this));
         /** update instance of all fbx animations */
-        const delta: number = this.clock.getDelta();
+        const delta = Math.min(this.clock.getDelta(), 0.1);
         TWEEN.update();
         this.mixers.forEach((m, i) => {
             m.update(delta);

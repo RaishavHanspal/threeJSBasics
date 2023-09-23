@@ -11,6 +11,6 @@ declare global {
 window.utilsObj = new Utils();
 
 // window.mainScene = new MainGame();
-window.mainScene = new SceneLoader();
+// window.mainScene = new SceneLoader();
 // new Lotto();
-// window.mainScene = new LottoProto();
+window.mainScene = new LottoProto();

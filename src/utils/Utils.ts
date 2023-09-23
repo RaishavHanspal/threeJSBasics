@@ -4,6 +4,7 @@ import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { LoadFileType } from "../interface";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ObjectLoader } from "three/src/loaders/ObjectLoader";
+import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
 
 export class Utils {
     /** map to hold all loaders */
@@ -21,6 +22,7 @@ export class Utils {
         this.loaders.set("gltf", new GLTFLoader());
         this.loaders.set("scene", new ObjectLoader());
         this.loaders.set("image", new ImageBitmapLoader());
+        this.loaders.set("obj", new OBJLoader());
     }
 
     /** maintain single mixer for one model */

@@ -1,1 +1,1 @@
-export type LoadFileType = "fbx" | "font" | "gltf" | "scene" | "image";
+export type LoadFileType = "fbx" | "font" | "gltf" | "scene" | "image"| "obj";
