@@ -1,7 +1,5 @@
-import { Lotto } from "./lotto";
-import { LottoProto } from "./lottoProto";
-import { MainGame } from "./main";
-import { SceneLoader } from "./sceneLoader";
+import HavokPhysics from "@babylonjs/havok";
+import { LottoHavoc } from "./lottoHavoc";
 import { Utils } from "./utils/Utils";
 declare global {
     var utilsObj: Utils;
@@ -13,4 +11,9 @@ window.utilsObj = new Utils();
 // window.mainScene = new MainGame();
 // window.mainScene = new SceneLoader();
 // new Lotto();
-window.mainScene = new LottoProto();
+// window.mainScene = new LottoProto();
+document.addEventListener("DOMContentLoaded", () => {
+    HavokPhysics().then((havok) => {
+        window.mainScene = new LottoHavoc(havok);
+    })
+})
