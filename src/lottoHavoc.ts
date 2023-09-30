@@ -58,10 +58,10 @@ export class LottoHavoc {
             transparent: true,
             opacity: 0.2, transmission: 0
         });
-        utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
-            const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
-            invSphere.material = glassMat;
-        });
+        // utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
+        //     const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
+        //     invSphere.material = glassMat;
+        // });
     }
 
     private ballCount = 0;
@@ -72,12 +72,12 @@ export class LottoHavoc {
         if (this.world) {
             this.havokStep(delta);
         }
-        this.inverseBody?.angularVelocity.set(2, 0, 0)
-        this.physicsArray.forEach((physicsEntry: Array<any>) => {
-            const [mesh, body] = physicsEntry;
-            mesh.position.set(body.position.x, body.position.y, body.position.z);
-            mesh.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
-        })
+        // this.inverseBody?.angularVelocity.set(2, 0, 0)
+        // this.physicsArray.forEach((physicsEntry: Array<any>) => {
+        //     const [mesh, body] = physicsEntry;
+        //     mesh.position.set(body.position.x, body.position.y, body.position.z);
+        //     mesh.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+        // })
         this.renderer.render(this.scene, this.camera);
     }
 
