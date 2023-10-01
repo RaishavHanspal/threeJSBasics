@@ -1,7 +1,8 @@
-import { HP_WorldId, HavokPhysicsWithBindings } from "@babylonjs/havok";
-import { Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, Euler, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, Quaternion, Scene, SphereGeometry, Vector3, WebGLRenderer } from "three";
+import { HP_BodyId, HP_ShapeId, HP_WorldId, HavokPhysicsWithBindings } from "@babylonjs/havok";
+import { BoxGeometry, Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, Euler, HemisphereLight, Material, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, Quaternion, Scene, SphereGeometry, Vector3, WebGLRenderer } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
+import { MeshAccumulator } from "./meshAccumulator";
 
 export class LottoHavoc {
     private scene: Scene;
@@ -9,8 +10,6 @@ export class LottoHavoc {
     private renderer: WebGLRenderer;
     private camera: PerspectiveCamera;
     private world: HP_WorldId;
-    private physicsArray: Array<Array<any>> = [];
-    private inverseBody: any;
     constructor(private havok: HavokPhysicsWithBindings) {
         this.initialize();
     }
@@ -41,11 +40,23 @@ export class LottoHavoc {
     }
 
     private startRender() {
+        /** create ground */
+        const groundDimensions: number[] = [15, 0.1, 15];
+        const ground = new Mesh(
+            new BoxGeometry(groundDimensions[0], groundDimensions[1], groundDimensions[2]),
+        )
+        this.scene.add(ground);
+        ground.position.y = -10;
+        this.bodies.push(this.createBoxBody(ground, "STATIC", groundDimensions));
         this.renderer.setAnimationLoop(this.update.bind(this));
         this.addCylinder();
         const coords = this.getCoords(5, 50);
         // coords.forEach(this.addBall.bind(this));
-        this.bodies.push(this.createBall(new Vector3(0, 0, 0), new Vector3(0, 0,0), new Vector3(1, 1, 1), ""));
+        this.bodies.push(this.createBall(null, "DYNAMIC"));
+        const sphere = new Mesh(new SphereGeometry(1), new MeshPhysicalMaterial({ color: "#0f0" }));
+        sphere.position.set(0, 0, 3);
+        this.scene.add(sphere);
+        this.bodies.push(this.createMeshImposter(sphere, "DYNAMIC"));
         this.addControls();
     }
 
@@ -58,10 +69,12 @@ export class LottoHavoc {
             transparent: true,
             opacity: 0.2, transmission: 0
         });
-        // utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
-        //     const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
-        //     invSphere.material = glassMat;
-        // });
+        utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
+            const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
+            invSphere.material = glassMat;
+            invSphere.position.y = 0
+            this.bodies.push(this.createMeshImposter(invSphere, "STATIC"));
+        });
     }
 
     private ballCount = 0;
@@ -72,12 +85,6 @@ export class LottoHavoc {
         if (this.world) {
             this.havokStep(delta);
         }
-        // this.inverseBody?.angularVelocity.set(2, 0, 0)
-        // this.physicsArray.forEach((physicsEntry: Array<any>) => {
-        //     const [mesh, body] = physicsEntry;
-        //     mesh.position.set(body.position.x, body.position.y, body.position.z);
-        //     mesh.quaternion.set(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
-        // })
         this.renderer.render(this.scene, this.camera);
     }
 
@@ -111,37 +118,84 @@ export class LottoHavoc {
         }
     }
 
+    private createBall(mesh: Mesh, motionType: string) {
+        const shapeId: HP_ShapeId = this.havok.HP_Shape_CreateSphere(
+            [0, 0, 0], 0.5
+        )[1]
+        if (mesh === null) {
+            const mat = new MeshPhysicalMaterial({ color: "#f00" });
+            mesh = new Mesh(
+                new SphereGeometry(0.5),
+                mat
+            )
+            this.scene.add(mesh);
+        }
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        return this.physicsAggregate(mesh, shapeId, motionType);
+    }
 
-    private createBall(position: Vector3, rotation: Vector3, scale: Vector3, motionType: string, mesh = true) {
+    private createBoxBody(mesh: Mesh, motionType: string, dimensions: any = [1, 1, 1]) {
+        const shapeId: HP_ShapeId = this.havok.HP_Shape_CreateBox(
+            [0, 0, 0], [0, 0, 0, 1], dimensions
+        )[1];
+        if (mesh === null) {
+            mesh = new Mesh(
+                new BoxGeometry(dimensions[0], dimensions[1], dimensions[2]),
+            )
+            this.scene.add(mesh);
+        }
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        return this.physicsAggregate(mesh, shapeId, motionType);
+    }
+
+    /** create a imposter based on mesh geometry */
+    private createMeshImposter(mesh: Mesh, motionType: string) {
+        const vertices = utilsObj.getVertices(mesh);
+        const indices = Object.keys(vertices).slice(0, Math.floor(vertices.length / 3)).map(Number);
+        const meshAccumulator = new MeshAccumulator(mesh, true, this.scene);
+        meshAccumulator._addMesh(mesh, vertices, indices);
+        const positions = meshAccumulator.getVertices(this.havok);
+        const numVec3s = positions.numObjects / 3;
+        const triangles = meshAccumulator.getTriangles(this.havok);
+        const numTriangles = triangles.numObjects / 3;
+        const shapeId = this.havok.HP_Shape_CreateMesh(positions.offset, numVec3s, triangles.offset, numTriangles)[1];
+        meshAccumulator.freeBuffer(this.havok, triangles);
+        meshAccumulator.freeBuffer(this.havok, positions)
+        return this.physicsAggregate(mesh, shapeId, motionType);
+    }
+
+    public getTransforms(mesh?: Mesh): { quaternion: Quaternion, position: Vector3 } {
+        const meshRotation: Vector3 | Euler = mesh ? mesh.rotation : new Vector3(0, 0, 0);
+        const meshPosition: Vector3 = mesh ? mesh.position : new Vector3(0, 0, 0);
         const quaternion = new Quaternion();
+        const rotation = new Vector3(meshRotation.x, meshRotation.y, meshRotation.z);
+        const position = new Vector3(meshPosition.x, meshPosition.y, meshPosition.z);
         quaternion.setFromEuler(new Euler(rotation.x, rotation.y, rotation.z));
-        const boxBody = this.havok.HP_Body_Create()[1];
+        return { quaternion, position };
+    }
+
+    private physicsAggregate(mesh: Mesh, shapeId: HP_ShapeId, motionType: string) {
+        const { position, quaternion } = this.getTransforms(mesh);
+        const boxBodyId = this.havok.HP_Body_Create()[1];
+        this.havok.HP_World_AddBody(this.world, boxBodyId, false);
         this.havok.HP_Body_SetShape(
-            boxBody,
-            this.havok.HP_Shape_CreateSphere(
-                [0, 0, 0], 0.5
-            )[1]
+            boxBodyId,
+            shapeId
         );
         this.havok.HP_Body_SetQTransform(
-            boxBody, [
+            boxBodyId, [
             [position.x, position.y, position.z],
             [quaternion.x, quaternion.y, quaternion.z, quaternion.w]
         ]
         )
-        this.havok.HP_World_AddBody(this.world, boxBody, false);
-        this.havok.HP_Body_SetMotionType(boxBody, 2);
-        if (!mesh) return { offset: this.havok.HP_Body_GetWorldTransformOffset(boxBody)[1], id: boxBody }
-        const body = new Mesh(
-            new SphereGeometry(0.5)
-        )
-        body.castShadow = true;
-        body.receiveShadow = true;
-        body.matrixAutoUpdate = false;
-        this.scene.add(body);
+        this.havok.HP_Body_SetMotionType(boxBodyId, (this.havok as any).MotionType[motionType]);
+        mesh.matrixAutoUpdate = false
         return {
-            offset: this.havok.HP_Body_GetWorldTransformOffset(boxBody)[1],
-            id: boxBody,
-            mesh: body
+            offset: this.havok.HP_Body_GetWorldTransformOffset(boxBodyId)[1],
+            id: boxBodyId,
+            mesh
         }
     }
 }

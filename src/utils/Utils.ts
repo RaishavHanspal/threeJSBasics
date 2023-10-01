@@ -59,14 +59,14 @@ export class Utils {
     public loadFile(scene: Scene, fileName: string, fileType: LoadFileType, callback?: (obj: any) => void, opts: any = {}, totalCount: number = 1, relPath: string = "assets/"): void {
         const loader: any = this.loaders.get(fileType);
         loader.load(relPath + fileName, (obj: any) => {
-            if(fileType === "image"){
+            if (fileType === "image") {
                 this.textureCache[fileName] = obj;
                 /** only call the callback once all the files have been loaded */
-                if(Object.keys(this.textureCache).length === totalCount){
+                if (Object.keys(this.textureCache).length === totalCount) {
                     callback && callback(obj);
                 }
             }
-            else{
+            else {
                 scene.add(fileType === "gltf" ? obj.scene : obj);
             }
             this.applyOpts(obj, opts);
@@ -74,13 +74,13 @@ export class Utils {
         });
     }
 
-    public getRandomNumber(min: number = 0, max?: number){
+    public getRandomNumber(min: number = 0, max?: number) {
         return Math.round(Math.random() * (max - min)) + min;
     }
 
     public getTexture(textureKey: string): any {
         const texture = this.textureCache[textureKey];
-        if(!texture){
+        if (!texture) {
             console.error("Texture not loaded!");
             return;
         }
@@ -88,11 +88,21 @@ export class Utils {
         return canvasTexture;
     }
 
-    public getSceneMeshes(): Object3D[]{
+    public getSceneMeshes(): Object3D[] {
         return this.sceneMeshes;
     }
 
-    public addSceneMesh(mesh: Mesh): void{
+    public addSceneMesh(mesh: Mesh): void {
         this.sceneMeshes.push(mesh);
+    }
+
+    public getVertices(mesh: Mesh): any {
+        let vertices: any;
+        if (mesh.geometry.index === null) {
+            vertices = (mesh.geometry.attributes.position as THREE.BufferAttribute).array
+        } else {
+            vertices = (mesh.geometry.clone().toNonIndexed().attributes.position as THREE.BufferAttribute).array
+        }
+        return vertices;
     }
 }

@@ -15,6 +15,6 @@ window.utilsObj = new Utils();
 // window.mainScene = new LottoProto();
 document.addEventListener("DOMContentLoaded", () => {
     HavokPhysics().then((havok) => {
-        new GameHavok(havok);
+        new LottoHavoc(havok);
     })
 })
