@@ -1,8 +1,12 @@
-import { Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, Scene, SphereGeometry, WebGLRenderer } from "three";
+import { Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, PointLight, Scene, SphereGeometry, WebGLRenderer } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 import CannonUtils from "./cannonUtils";
 import * as CANNON from 'cannon-es'
+import WebGPURenderer from "three/examples/jsm/renderers/webgpu/WebGPURenderer";
+import { GUI } from 'dat.gui'
+import { MeshBasicNodeMaterial, MeshPhysicalNodeMaterial, color, lightingContext } from "three/examples/jsm/nodes/Nodes";
+import MeshPhongNodeMaterial from "three/examples/jsm/nodes/materials/MeshPhongNodeMaterial";
 
 export class LottoProto {
     private scene: Scene;
@@ -16,7 +20,20 @@ export class LottoProto {
         this.initialize();
     }
 
+    private gui: GUI;
+    private selectedOptions: any = {
+        renderer: "WebGPURenderer"
+    } 
     private initialize() {
+        const renderType = localStorage.getItem("renderer") || "WebGPURenderer";
+        if(renderType && ["WebGLRenderer", "WebGPURenderer"].includes(renderType)){
+            this.selectedOptions.renderer = renderType;
+        }
+        const physical = new MeshPhysicalNodeMaterial({});
+        physical.colorNode = color(0xffffff);
+        const phong = new MeshPhongNodeMaterial();
+        new MeshBasicNodeMaterial();
+        phong.colorNode = color(0xffffff);
         this.world = new CANNON.World();
         this.world.gravity.set(0, -9.82, 0);
         this.scene = new Scene();
@@ -24,7 +41,22 @@ export class LottoProto {
         this.clock = new Clock();
         this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.z = 20;
-        this.renderer = new WebGLRenderer();
+        this.gui = new GUI()
+        const webGL = new WebGLRenderer();
+        const webGPU = new WebGPURenderer({antialias: true});
+        const options = {
+            side:{
+                WebGLRenderer: webGL,
+                WebGPURenderer: webGPU
+            }
+        }
+        this.gui.add(this.selectedOptions, "renderer", ["WebGLRenderer", "WebGPURenderer"])
+        .onChange((v) => {
+            this.renderer = options.side[v];
+            localStorage.setItem("renderer", v);
+            location.reload();
+        });
+        this.renderer = this.selectedOptions.renderer === "WebGPURenderer" ? webGPU: webGL;
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
         this.stats = new Stats()
@@ -71,7 +103,7 @@ export class LottoProto {
         });
         utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
             const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
-            invSphere.material = glassMat;
+                        invSphere.material = glassMat;
             this.inverseBody = this.linkPhysics(invSphere, 10, this.cylinderMat);
             let constraintBody = new CANNON.Body({ mass: 0 });
             constraintBody.addShape(new CANNON.Sphere(1));

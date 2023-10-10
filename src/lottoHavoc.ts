@@ -1,13 +1,16 @@
 import { HP_BodyId, HP_ShapeId, HP_WorldId, HavokPhysicsWithBindings } from "@babylonjs/havok";
-import { BoxGeometry, Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, Euler, HemisphereLight, Material, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, Quaternion, Scene, SphereGeometry, Vector3, WebGLRenderer } from "three";
+import { BoxGeometry, Clock, Color, CylinderGeometry, DirectionalLight, DoubleSide, Euler, HemisphereLight, Material, Mesh, MeshBasicMaterial, MeshPhongMaterial, MeshPhysicalMaterial, PerspectiveCamera, PlaneGeometry, Quaternion, SRGBColorSpace, Scene, SphereGeometry, Vector3, WebGLRenderer } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import Stats from "three/examples/jsm/libs/stats.module";
 import { MeshAccumulator } from "./meshAccumulator";
 
+import WebGPURenderer from "three/examples/jsm/renderers/webgpu/WebGPURenderer";
+import { MeshBasicNodeMaterial, MeshPhysicalNodeMaterial, color } from "three/examples/jsm/nodes/Nodes";
+// import WebGPU from "three/examples/jsm/capabilities/WebGPU";
 export class LottoHavoc {
     private scene: Scene;
     private clock: Clock;
-    private renderer: WebGLRenderer;
+    private renderer: WebGLRenderer | WebGPURenderer;
     private camera: PerspectiveCamera;
     private world: HP_WorldId;
     constructor(private havok: HavokPhysicsWithBindings) {
@@ -22,9 +25,9 @@ export class LottoHavoc {
         this.clock = new Clock();
         this.camera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.camera.position.z = 20;
-        this.renderer = new WebGLRenderer();
+        this.renderer = new WebGPURenderer();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(this.renderer.domElement);
+                document.body.appendChild(this.renderer.domElement);
         this.stats = new Stats()
         document.body.appendChild(this.stats.dom)
         this.startRender();
@@ -44,6 +47,7 @@ export class LottoHavoc {
         const groundDimensions: number[] = [15, 0.1, 15];
         const ground = new Mesh(
             new BoxGeometry(groundDimensions[0], groundDimensions[1], groundDimensions[2]),
+            new MeshBasicNodeMaterial()
         )
         this.scene.add(ground);
         ground.position.y = -10;
@@ -53,7 +57,8 @@ export class LottoHavoc {
         const coords = this.getCoords(5, 50);
         // coords.forEach(this.addBall.bind(this));
         this.bodies.push(this.createBall(null, "DYNAMIC"));
-        const sphere = new Mesh(new SphereGeometry(1), new MeshPhysicalMaterial({ color: "#0f0" }));
+        const mat = new MeshBasicMaterial({ color: new Color("#0f0")} );
+        const sphere = new Mesh(new SphereGeometry(1), mat);
         sphere.position.set(0, 0, 3);
         this.scene.add(sphere);
         this.bodies.push(this.createMeshImposter(sphere, "DYNAMIC"));
@@ -65,12 +70,21 @@ export class LottoHavoc {
     }
 
     private addCylinder() {
-        const glassMat = new MeshPhysicalMaterial({
+        const glassMat = new MeshBasicMaterial({
             transparent: true,
-            opacity: 0.2, transmission: 0
+            opacity: 0.2,
+            colorWrite: true,
         });
         utilsObj.loadFile(this.scene, "sphere.obj", "obj", (obj: any) => {
             const invSphere = obj.children.find((m: Mesh) => (m.name.startsWith("sphere")));
+            obj.children.forEach((displayObject: Mesh) => {
+                if(displayObject.isMesh){
+                    if(displayObject.material instanceof MeshPhongMaterial){
+                        const mat = new MeshBasicMaterial({color: new Color("#00f")});
+                        displayObject.material = mat;
+                    }
+                }
+            })
             invSphere.material = glassMat;
             invSphere.position.y = 0
             this.bodies.push(this.createMeshImposter(invSphere, "STATIC"));
@@ -123,7 +137,9 @@ export class LottoHavoc {
             [0, 0, 0], 0.5
         )[1]
         if (mesh === null) {
-            const mat = new MeshPhysicalMaterial({ color: "#f00" });
+            // const mat = new MeshPhysicalMaterial({ color: "#f00" });
+            const mat = new MeshBasicNodeMaterial({});
+            mat.colorNode = color("#f00");
             mesh = new Mesh(
                 new SphereGeometry(0.5),
                 mat
