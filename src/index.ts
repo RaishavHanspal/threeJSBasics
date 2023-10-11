@@ -3,19 +3,11 @@ import { LottoHavoc } from "./lottoHavoc";
 import { Utils } from "./utils/Utils";
 import { GameHavok } from "./havocSimple";
 import { LottoProto } from "./lottoProto";
+import { SceneLoader } from "./sceneLoader";
 declare global {
     var utilsObj: Utils;
     var mainScene: any;
 }
 
 window.utilsObj = new Utils();
-
-// window.mainScene = new MainGame();
-// window.mainScene = new SceneLoader();
-// new Lotto();
-window.mainScene = new LottoProto();
-// document.addEventListener("DOMContentLoaded", () => {
-    // HavokPhysics().then((havok) => {
-    //     new LottoHavoc(havok);
-    // })
-// })
+window.mainScene = new SceneLoader();

@@ -5,6 +5,7 @@ import { LoadFileType } from "../interface";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ObjectLoader } from "three/src/loaders/ObjectLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { MeshAccumulator } from "../meshAccumulator";
 
 export class Utils {
     /** map to hold all loaders */
