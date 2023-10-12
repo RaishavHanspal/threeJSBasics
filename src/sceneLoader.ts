@@ -107,12 +107,12 @@ export class SceneLoader {
     }
 
     private startRender() {
-        this.setupVR();
         this.createPhysicsElements();
         this.enablePhysics();
         window.addEventListener('resize', this.resize.bind(this), false);
         this.renderer.setAnimationLoop(this.animate.bind(this));
         this.resize();
+        this.setupVR();
     }
 
     private characterBody: CANNON.Body;
@@ -218,17 +218,16 @@ export class SceneLoader {
     }
 
     private setupVR(): void {
-        alert("setup vr");
+        /** position vr camera w.r.t. actual camera */
         this.renderer.xr.addEventListener('sessionstart', (e) => {
             const baseReferenceSpace = this.renderer.xr.getReferenceSpace();
-            alert("vr started!");
-            const offsetPosition = new Vector3
+            const offsetPosition = this.camera.position.clone();
+            offsetPosition.y = -1 * offsetPosition.y;
             const offsetRotation = this.camera.quaternion;
-            const transform = new XRRigidTransform(offsetPosition, { x: offsetRotation.x, y: -(offsetRotation.y), z: offsetRotation.z, w: offsetRotation.w });
+            const transform = new XRRigidTransform(offsetPosition, { x: offsetRotation.x, y: -1 * offsetRotation.y, z: offsetRotation.z, w: offsetRotation.w });
             const teleportSpaceOffset = baseReferenceSpace.getOffsetReferenceSpace(transform);
             this.renderer.xr.setReferenceSpace(teleportSpaceOffset);
         });
-        this.renderer.xr.getCamera().position.set(this.camera.position.x, this.camera.position.y, this.camera.position.z);
         this.renderer.xr.enabled = true;
         document.body.appendChild(VRButton.createButton(this.renderer));
     }
