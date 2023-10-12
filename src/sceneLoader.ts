@@ -218,16 +218,17 @@ export class SceneLoader {
     }
 
     private setupVR(): void {
-        this.renderer.xr.enabled = true;
-        document.body.appendChild(VRButton.createButton(this.renderer));
         this.renderer.xr.addEventListener('sessionstart', (e) => {
             const baseReferenceSpace = this.renderer.xr.getReferenceSpace();
+            alert("vr started!");
             const offsetPosition = this.camera.position;
             const offsetRotation = this.camera.quaternion;
             const transform = new XRRigidTransform(offsetPosition, { x: offsetRotation.x, y: -(offsetRotation.y), z: offsetRotation.z, w: offsetRotation.w });
             const teleportSpaceOffset = baseReferenceSpace.getOffsetReferenceSpace(transform);
             this.renderer.xr.setReferenceSpace(teleportSpaceOffset);
         });
+        this.renderer.xr.enabled = true;
+        document.body.appendChild(VRButton.createButton(this.renderer));
     }
 
     private updateRaycaster(event: any): void {
