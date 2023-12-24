@@ -1,12 +1,13 @@
 import { Scene } from "three/src/scenes/Scene";
 import { VRButton } from "three/examples/jsm/webxr/VRButton"
-import { AnimationAction, AnimationMixer, BoxGeometry, Clock, Color, DoubleSide, Matrix4, Mesh, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Quaternion, Vector3, WebGLRenderer } from "three/src/Three";
+import { AnimationAction, AnimationMixer, BoxGeometry, Clock, Color, DoubleSide, Matrix4, Mesh, MeshBasicMaterial, MeshPhysicalMaterial, Object3D, PerspectiveCamera, Quaternion, SphereGeometry, Vector3, WebGLRenderer } from "three/src/Three";
 import { reelpanel } from "./elements/reelpanel";
 import TWEEN from "@tweenjs/tween.js";
 import * as CANNON from "cannon-es"
 import { Container, Renderer, Sprite } from "pixi.js";
 
 import Stats from 'three/examples/jsm/libs/stats.module'
+import { BlendFunction, EffectComposer, EffectPass, OutlineEffect, RenderPass, Selection, SelectiveBloomEffect } from 'postprocessing'
 export class pixiWithThree {
     /** instance to run 2 things at the same time threeJS ans pixiJS */
     private threeScene: Scene;
@@ -31,6 +32,9 @@ export class pixiWithThree {
     private pixiRenderer: Renderer;
     private pixiScene: Container;
     private stats: Stats;
+    private meshNames: Array<string> = [];
+
+    private usePostProcessing: boolean = true;
 
     constructor() {
         console.log("Start setting up a scene");
@@ -46,7 +50,7 @@ export class pixiWithThree {
         this.world.gravity.set(0, -9.68, 0);
         this.clock = new Clock();
         this.targetQuaternion = new Quaternion();
-        this.threeRenderer = new WebGLRenderer({ antialias: true, alpha: true });
+        this.threeRenderer = new WebGLRenderer({ powerPreference: "high-performance", antialias: false, stencil: false, depth: false });
         this.threeRenderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.threeRenderer.domElement);
         this.stats = new Stats()
@@ -64,6 +68,38 @@ export class pixiWithThree {
         this.pixiScene = new Container();
     }
 
+    private composer: EffectComposer;
+    private outlineEffect: OutlineEffect;
+    private selectiveBloomEffect: SelectiveBloomEffect;
+    private initPostProcessing() {
+        this.composer = new EffectComposer(this.threeRenderer);
+        const renderPass = new RenderPass(this.threeScene, this.camera);
+
+        /** initialize outlinePass - we will later use this on any mesh in the scene */
+        this.outlineEffect = new OutlineEffect(this.threeScene, this.camera, {
+            blendFunction: BlendFunction.SCREEN,
+            multisampling: Math.min(4, this.threeRenderer.capabilities.maxSamples),
+            edgeStrength: 1,
+            visibleEdgeColor: 0xffffff,
+            hiddenEdgeColor: 0xffffff,
+        });
+
+        /** initialize selectiveBloomPass */
+        this.selectiveBloomEffect = new SelectiveBloomEffect(this.threeScene, this.camera, {
+            blendFunction: BlendFunction.ADD,
+			mipmapBlur: true,
+			luminanceThreshold: 0.4,
+			luminanceSmoothing: 0.2,
+			intensity: 5
+        });
+        this.selectiveBloomEffect.inverted = true;
+        this.composer.addPass(renderPass);
+        this.composer.addPass(new EffectPass(this.camera, this.selectiveBloomEffect, this.outlineEffect));
+        if(this.threeRenderer.capabilities.isWebGL2){
+            this.composer.multisampling = Math.min(4, this.threeRenderer.capabilities.maxSamples);
+        }
+    }
+
     private addElements() {
         this.loadJsonScene();
         this.updatePixiElements();
@@ -74,7 +110,7 @@ export class pixiWithThree {
         const pixiSprite = Sprite.from('assets/abc.png');
         pixiSprite.anchor.set(0.5);
         pixiSprite.cursor = "pointer"
-        pixiSprite.interactive = true;
+        pixiSprite.eventMode = "dynamic"
         pixiSprite.onclick = () => {
             new TWEEN.Tween(pixiSprite.position).to({ y: 1000 }, 2000).onComplete(() => {
                 pixiSprite.visible = false;
@@ -93,6 +129,10 @@ export class pixiWithThree {
         utilsObj.loadFile(this.threeScene, "sceneCS.json", "scene", (obj) => {
             console.log(obj);
             obj.traverse((displayObject: any, i: number) => {
+                if(displayObject.name === "" || this.meshNames.includes(displayObject.name)){
+                    displayObject.name += this.meshNames.length;
+                }
+                this.meshNames.push(displayObject);
                 let currentAction: AnimationAction;
                 let currentMixer: AnimationMixer;
                 if (displayObject.animations.length) {
@@ -120,6 +160,7 @@ export class pixiWithThree {
     }
 
     private startRender() {
+        this.usePostProcessing && this.initPostProcessing();
         this.createPhysicsElements();
         this.enablePhysics();
         window.addEventListener('resize', this.resize.bind(this), false);
@@ -152,33 +193,41 @@ export class pixiWithThree {
         const planeGeometry = new BoxGeometry(plane.halfExtents.x * 2,
             plane.halfExtents.y * 2,
             plane.halfExtents.z * 2);
-        const planeMaterial = new MeshPhysicalMaterial({
+        const planeMaterial = new MeshBasicMaterial({
             side: DoubleSide,
             color: "#ff00ff"
         });
         const planeMesh = new Mesh(planeGeometry, planeMaterial);
+        planeMesh.name = "planeMesh";
         const planeBody = new CANNON.Body({ mass: 0 });
         planeBody.position.set(planeMesh.position.x, planeMesh.position.y, planeMesh.position.z);
         planeBody.addShape(plane);
         this.threeScene.add(planeMesh);
         this.world.addBody(planeBody);
         this.linkPhysics(planeMesh, planeBody);
-
+        
         /** greenBox also landing on same platform */
         const greenBox = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
         const ballGeometry = new BoxGeometry(greenBox.halfExtents.x * 2, greenBox.halfExtents.y * 2, greenBox.halfExtents.z * 2);
-        const sphereMaterial = new MeshPhysicalMaterial({
+        const sphereMaterial = new MeshBasicMaterial({
             side: DoubleSide,
-            color: "#00ff00"
+            color: "#00ffff"
         })
-        const ballMesh = new Mesh(ballGeometry, sphereMaterial);
-        ballMesh.position.y = 5;
-        this.threeScene.add(ballMesh);
+        const greenBoxMesh = new Mesh(ballGeometry, sphereMaterial);
+        greenBoxMesh.name = "greenBoxMesh";
+        greenBoxMesh.position.y = 5;
+        this.threeScene.add(greenBoxMesh);
+        this.outlineEffect.selection.add(greenBoxMesh);
         const ballBody = new CANNON.Body({ mass: 1 });
         ballBody.addShape(greenBox);
-        ballBody.position.set(ballMesh.position.x, ballMesh.position.y, ballMesh.position.z)
+        ballBody.position.set(greenBoxMesh.position.x, greenBoxMesh.position.y, greenBoxMesh.position.z)
         this.world.addBody(ballBody);
-        this.linkPhysics(ballMesh, ballBody);
+        this.linkPhysics(greenBoxMesh, ballBody);
+        
+        const ball = new Mesh(new SphereGeometry(1), new MeshBasicMaterial({ color: "#00ff00"}));
+        ball.position.set(0, 2, 10);
+        this.outlineEffect.selection.add(ball)
+        this.threeScene.add(ball);
     }
 
     private physicsArray: Array<Array<any>> = [];
@@ -327,15 +376,17 @@ export class pixiWithThree {
         this.reelPanel && this.reelPanel.update(delta);
         this.characterReady && this.checkForCharacterMovement(delta);
         // this.threeRenderer.render(this.threeScene, this.camera);
-        this.threeRenderer.state.reset();
+        this.threeRenderer.resetState();
+        if (this.usePostProcessing) {
+            this.composer.render();
+        }
+        else {
+            this.threeRenderer.render(this.threeScene, this.camera);
+        }
+        this.threeRenderer.resetState()     
         this.pixiRenderer.reset();
-
-        this.threeRenderer.render(this.threeScene, this.camera);
-
-        this.threeRenderer.state.reset();
-        this.pixiRenderer.reset();
-
         this.pixiRenderer.render(this.pixiScene);
+        this.pixiRenderer.reset();
         this.stats.update()
     }
 

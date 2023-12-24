@@ -37,6 +37,7 @@
         "@tweenjs/tween.js": "^18.6.4",
         "dat.gui": "^0.7.9",
         "pixi.js": "^7.3.2",
+        "postprocessing": "^6.33.4",
         "three": "^0.157.0",
         "three-csg-ts": "^3.1.13",
         "webp-converter": "^2.3.3"
